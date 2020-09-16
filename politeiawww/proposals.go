@@ -508,7 +508,7 @@ func (p *politeiawww) processVoteResults(token string) (*www.VoteResultsReply, e
 	}
 	res.StartVote.Vote.Options = vo
 
-	// Prep case votes payload
+	// Prep cast votes payload
 	csp := voteplugin.CastVotes{
 		Token: token,
 	}
