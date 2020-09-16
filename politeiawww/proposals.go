@@ -548,7 +548,7 @@ func convertVoteStatusToWWW(status ticketvote.VoteStatusT) www.PropVoteStatusT {
 	case ticketvote.VoteStatusFinished:
 		return www.PropVoteStatusFinished
 	default:
-		return www.PropVoteStatusDoesntExist
+		return www.PropVoteStatusInvalid
 	}
 }
 
