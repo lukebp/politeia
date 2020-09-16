@@ -490,10 +490,11 @@ func (p *politeiawww) processVoteResults(token string) (*www.VoteResultsReply, e
 			},
 		},
 		StartVoteReply: www.StartVoteReply{
-			StartBlockHeight: string(vd.Vote.StartBlockHeight),
-			StartBlockHash:   vd.Vote.StartBlockHash,
-			EndHeight:        string(vd.Vote.EndBlockHeight),
-			EligibleTickets:  vd.Vote.EligibleTickets,
+			StartBlockHeight: strconv.FormatUint(uint64(vd.Vote.StartBlockHeight),
+				10),
+			StartBlockHash:  vd.Vote.StartBlockHash,
+			EndHeight:       strconv.FormatUint(uint64(vd.Vote.EndBlockHeight), 10),
+			EligibleTickets: vd.Vote.EligibleTickets,
 		},
 	}
 
