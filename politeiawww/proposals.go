@@ -16,7 +16,7 @@ import (
 
 	"github.com/decred/politeia/decredplugin"
 	piplugin "github.com/decred/politeia/plugins/pi"
-	voteplugin "github.com/decred/politeia/plugins/ticketvote"
+	ticketvote "github.com/decred/politeia/plugins/ticketvote"
 	pd "github.com/decred/politeia/politeiad/api/v1"
 	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
 	www "github.com/decred/politeia/politeiawww/api/www/v1"
@@ -461,17 +461,17 @@ func (p *politeiawww) processVoteResults(token string) (*www.VoteResultsReply, e
 	log.Tracef("processVoteResults: %v", token)
 
 	// Prep vote details payload
-	vdp := voteplugin.Details{
+	vdp := ticketvote.Details{
 		Token: token,
 	}
-	payload, err := voteplugin.EncodeDetails(vdp)
+	payload, err := ticketvote.EncodeDetails(vdp)
 	if err != nil {
 		return nil, err
 	}
 
-	r, err := p.pluginCommand(voteplugin.ID, voteplugin.CmdDetails, "",
+	r, err := p.pluginCommand(ticketvote.ID, ticketvote.CmdDetails, "",
 		string(payload))
-	vd, err := voteplugin.DecodeDetailsReply([]byte(r))
+	vd, err := ticketvote.DecodeDetailsReply([]byte(r))
 	if err != nil {
 		return nil, err
 	}
@@ -509,14 +509,14 @@ func (p *politeiawww) processVoteResults(token string) (*www.VoteResultsReply, e
 	res.StartVote.Vote.Options = vo
 
 	// Prep cast votes payload
-	csp := voteplugin.CastVotes{
+	csp := ticketvote.CastVotes{
 		Token: token,
 	}
-	payload, err = voteplugin.EncodeCastVotes(csp)
+	payload, err = ticketvote.EncodeCastVotes(csp)
 
-	r, err = p.pluginCommand(voteplugin.ID, voteplugin.CmdCastVotes, "",
+	r, err = p.pluginCommand(ticketvote.ID, ticketvote.CmdCastVotes, "",
 		string(payload))
-	cv, err := voteplugin.DecodeCastVotesReply([]byte(r))
+	cv, err := ticketvote.DecodeCastVotesReply([]byte(r))
 	if err != nil {
 		return nil, err
 	}
