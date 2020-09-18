@@ -33,6 +33,9 @@ func (p *politeiawww) piCommentNew(cn pi.CommentNew, usr *user.User) (*piplugin.
 		State:     convertPropStateFromPi(cn.State),
 	}
 	payload, err := piplugin.EncodeCommentNew(ncp)
+	if err != nil {
+		return nil, err
+	}
 
 	r, err := p.pluginCommand(piplugin.ID, piplugin.CmdCommentNew, "",
 		string(payload))
