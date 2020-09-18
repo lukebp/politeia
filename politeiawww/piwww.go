@@ -162,6 +162,16 @@ func convertPropStateFromPropStatus(s pi.PropStatusT) pi.PropStateT {
 	return pi.PropStateInvalid
 }
 
+func convertPropStateFromPi(s pi.PropStateT) piplugin.PropStateT {
+	switch s {
+	case pi.PropStateUnvetted:
+		return piplugin.PropStateUnvetted
+	case pi.PropStateVetted:
+		return piplugin.PropStateVetted
+	}
+	return piplugin.PropStateInvalid
+}
+
 func convertRecordStatusFromPropStatus(s pi.PropStatusT) pd.RecordStatusT {
 	switch s {
 	case pi.PropStatusUnvetted:
@@ -1421,7 +1431,15 @@ func (p *politeiawww) processCommentNew(cn pi.CommentNew, usr *user.User) (*pi.C
 	}
 
 	// Call pi plugin to add new comment
-	reply, err := p.piCommentNew(cn, usr)
+	reply, err := p.piCommentNew(&piplugin.CommentNew{
+		UUID:      usr.ID.String(),
+		Token:     cn.Token,
+		ParentID:  cn.ParentID,
+		Comment:   cn.Comment,
+		PublicKey: cn.PublicKey,
+		Signature: cn.Signature,
+		State:     convertPropStateFromPi(cn.State),
+	})
 	if err != nil {
 		return nil, err
 	}
