@@ -1626,37 +1626,14 @@ func (p *politeiawww) processTokenInventory(isAdmin bool) (*www.TokenInventoryRe
 
 	// Translate reply to www
 	res := www.TokenInventoryReply{
-		Pre:      vi.Unauthorized,
+		Pre:      append(vi.Unauthorized, vi.Authorized...),
 		Active:   vi.Started,
 		Approved: vi.Approved,
 		Rejected: vi.Rejected,
 	}
 
-	// Setup politeiad request to get tokens by record statuses
-	challenge, err := util.Random(pd.ChallengeSize)
-	if err != nil {
-		return nil, err
-	}
-
-	e := pd.InventoryByStatus{
-		Challenge: hex.EncodeToString(challenge),
-	}
-
-	// Send politeiad request
-	responseBody, err := p.makeRequest(http.MethodPost,
-		pd.InventoryByStatusRoute, e)
-	if err != nil {
-		return nil, err
-	}
-
-	// Handle response
-	var isReply pd.InventoryByStatusReply
-	err = json.Unmarshal(responseBody, &isReply)
-	if err != nil {
-		return nil, fmt.Errorf("Unmarshal InventoryByStatusReply: %v", err)
-	}
-
-	err = util.VerifyChallenge(p.cfg.Identity, challenge, isReply.Response)
+	// Call politeiad to get tokens by record statuses
+	isReply, err := p.inventoryByStatus()
 	if err != nil {
 		return nil, err
 	}
