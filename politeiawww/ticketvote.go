@@ -5,7 +5,6 @@
 package main
 
 import (
-	"github.com/decred/politeia/decredplugin"
 	ticketvote "github.com/decred/politeia/plugins/ticketvote"
 	www "github.com/decred/politeia/politeiawww/api/www/v1"
 )
@@ -87,7 +86,7 @@ func (p *politeiawww) ballot(ballot *www.Ballot) (*ticketvote.BallotReply, error
 }
 
 // summaries calls ticketvote plugin to get vote summaries information
-func (p *politeiawww) summaries(tokens []string) (*ticketvote.SummariesReply, error) {
+func (p *politeiawww) voteSummaries(tokens []string) (*ticketvote.SummariesReply, error) {
 	// Prep plugin command
 	smp := ticketvote.Summaries{
 		Tokens: tokens,
@@ -108,55 +107,4 @@ func (p *politeiawww) summaries(tokens []string) (*ticketvote.SummariesReply, er
 	}
 
 	return sm, nil
-}
-
-func (p *politeiawww) convertVoteStatusToWWW(status ticketvote.VoteStatusT) www.PropVoteStatusT {
-	switch status {
-	case ticketvote.VoteStatusInvalid:
-		return www.PropVoteStatusInvalid
-	case ticketvote.VoteStatusUnauthorized:
-		return www.PropVoteStatusNotAuthorized
-	case ticketvote.VoteStatusAuthorized:
-		return www.PropVoteStatusAuthorized
-	case ticketvote.VoteStatusStarted:
-		return www.PropVoteStatusStarted
-	case ticketvote.VoteStatusFinished:
-		return www.PropVoteStatusFinished
-	default:
-		return www.PropVoteStatusInvalid
-	}
-}
-
-func (p *politeiawww) convertVoteTypeToWWW(t ticketvote.VoteT) www.VoteT {
-	switch t {
-	case ticketvote.VoteTypeInvalid:
-		return www.VoteTypeInvalid
-	case ticketvote.VoteTypeStandard:
-		return www.VoteTypeStandard
-	case ticketvote.VoteTypeRunoff:
-		return www.VoteTypeRunoff
-	default:
-		return www.VoteTypeInvalid
-	}
-}
-
-func (p *politeiawww) convertVoteErrorCodeToWWW(errcode ticketvote.VoteErrorT) decredplugin.ErrorStatusT {
-	switch errcode {
-	case ticketvote.VoteErrorInvalid:
-		return decredplugin.ErrorStatusInvalid
-	case ticketvote.VoteErrorInternalError:
-		return decredplugin.ErrorStatusInternalError
-	case ticketvote.VoteErrorRecordNotFound:
-		return decredplugin.ErrorStatusProposalNotFound
-	case ticketvote.VoteErrorVoteBitInvalid:
-		return decredplugin.ErrorStatusInvalidVoteBit
-	case ticketvote.VoteErrorVoteStatusInvalid:
-		return decredplugin.ErrorStatusVoteHasEnded
-	case ticketvote.VoteErrorTicketAlreadyVoted:
-		return decredplugin.ErrorStatusDuplicateVote
-	case ticketvote.VoteErrorTicketNotEligible:
-		return decredplugin.ErrorStatusIneligibleTicket
-	default:
-		return decredplugin.ErrorStatusInternalError
-	}
 }

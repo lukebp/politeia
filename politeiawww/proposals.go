@@ -16,6 +16,7 @@ import (
 
 	"github.com/decred/politeia/decredplugin"
 	piplugin "github.com/decred/politeia/plugins/pi"
+	ticketvote "github.com/decred/politeia/plugins/ticketvote"
 	pd "github.com/decred/politeia/politeiad/api/v1"
 	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
 	www "github.com/decred/politeia/politeiawww/api/www/v1"
@@ -247,7 +248,7 @@ func convertStatusToWWW(status pi.PropStatusT) www.PropStatusT {
 	}
 }
 
-func (p *politeiawww) convertProposalToWWW(pr *pi.ProposalRecord) (*www.ProposalRecord, error) {
+func convertProposalToWWW(pr *pi.ProposalRecord) (*www.ProposalRecord, error) {
 	// Decode metadata
 	var pm *piplugin.ProposalMetadata
 	for _, v := range pr.Metadata {
@@ -335,7 +336,7 @@ func (p *politeiawww) processProposalDetails(pd www.ProposalsDetails, u *user.Us
 	if err != nil {
 		return nil, err
 	}
-	pw, err := p.convertProposalToWWW(pr)
+	pw, err := convertProposalToWWW(pr)
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +366,7 @@ func (p *politeiawww) processBatchProposals(bp www.BatchProposals, u *user.User)
 	// Convert proposals records
 	propsw := make([]www.ProposalRecord, 0, len(bp.Tokens))
 	for _, pr := range props {
-		propw, err := p.convertProposalToWWW(&pr)
+		propw, err := convertProposalToWWW(&pr)
 		if err != nil {
 			return nil, err
 		}
@@ -512,11 +513,41 @@ func (p *politeiawww) processVoteResults(token string) (*www.VoteResultsReply, e
 	return &res, nil
 }
 
+func convertVoteStatusToWWW(status ticketvote.VoteStatusT) www.PropVoteStatusT {
+	switch status {
+	case ticketvote.VoteStatusInvalid:
+		return www.PropVoteStatusInvalid
+	case ticketvote.VoteStatusUnauthorized:
+		return www.PropVoteStatusNotAuthorized
+	case ticketvote.VoteStatusAuthorized:
+		return www.PropVoteStatusAuthorized
+	case ticketvote.VoteStatusStarted:
+		return www.PropVoteStatusStarted
+	case ticketvote.VoteStatusFinished:
+		return www.PropVoteStatusFinished
+	default:
+		return www.PropVoteStatusInvalid
+	}
+}
+
+func convertVoteTypeToWWW(t ticketvote.VoteT) www.VoteT {
+	switch t {
+	case ticketvote.VoteTypeInvalid:
+		return www.VoteTypeInvalid
+	case ticketvote.VoteTypeStandard:
+		return www.VoteTypeStandard
+	case ticketvote.VoteTypeRunoff:
+		return www.VoteTypeRunoff
+	default:
+		return www.VoteTypeInvalid
+	}
+}
+
 func (p *politeiawww) processBatchVoteSummary(bvs www.BatchVoteSummary) (*www.BatchVoteSummaryReply, error) {
 	log.Tracef("processBatchVoteSummary: %v", bvs.Tokens)
 
 	// Call ticketvote plugin to get vote summaries
-	sm, err := p.summaries(bvs.Tokens)
+	sm, err := p.voteSummaries(bvs.Tokens)
 	if err != nil {
 		return nil, err
 	}
@@ -529,8 +560,8 @@ func (p *politeiawww) processBatchVoteSummary(bvs www.BatchVoteSummary) (*www.Ba
 	summaries := make(map[string]www.VoteSummary, len(sm.Summaries))
 	for t, sum := range sm.Summaries {
 		vs := www.VoteSummary{
-			Status:           p.convertVoteStatusToWWW(sum.Status),
-			Type:             p.convertVoteTypeToWWW(sum.Type),
+			Status:           convertVoteStatusToWWW(sum.Status),
+			Type:             convertVoteTypeToWWW(sum.Type),
 			Approved:         sum.Approved,
 			EligibleTickets:  sum.EligibleTickets,
 			Duration:         sum.Duration,
@@ -559,6 +590,27 @@ func (p *politeiawww) processBatchVoteSummary(bvs www.BatchVoteSummary) (*www.Ba
 	return &res, nil
 }
 
+func convertVoteErrorCodeToWWW(errcode ticketvote.VoteErrorT) decredplugin.ErrorStatusT {
+	switch errcode {
+	case ticketvote.VoteErrorInvalid:
+		return decredplugin.ErrorStatusInvalid
+	case ticketvote.VoteErrorInternalError:
+		return decredplugin.ErrorStatusInternalError
+	case ticketvote.VoteErrorRecordNotFound:
+		return decredplugin.ErrorStatusProposalNotFound
+	case ticketvote.VoteErrorVoteBitInvalid:
+		return decredplugin.ErrorStatusInvalidVoteBit
+	case ticketvote.VoteErrorVoteStatusInvalid:
+		return decredplugin.ErrorStatusVoteHasEnded
+	case ticketvote.VoteErrorTicketAlreadyVoted:
+		return decredplugin.ErrorStatusDuplicateVote
+	case ticketvote.VoteErrorTicketNotEligible:
+		return decredplugin.ErrorStatusIneligibleTicket
+	default:
+		return decredplugin.ErrorStatusInternalError
+	}
+}
+
 func (p *politeiawww) processCastVotes(ballot *www.Ballot) (*www.BallotReply, error) {
 	log.Tracef("processCastVotes")
 
@@ -576,7 +628,7 @@ func (p *politeiawww) processCastVotes(ballot *www.Ballot) (*www.BallotReply, er
 			ClientSignature: ballot.Votes[i].Signature,
 			Signature:       rp.Receipt,
 			Error:           rp.ErrorContext,
-			ErrorStatus:     p.convertVoteErrorCodeToWWW(rp.ErrorCode),
+			ErrorStatus:     convertVoteErrorCodeToWWW(rp.ErrorCode),
 		})
 	}
 
