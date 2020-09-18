@@ -162,16 +162,6 @@ func convertPropStateFromPropStatus(s pi.PropStatusT) pi.PropStateT {
 	return pi.PropStateInvalid
 }
 
-func convertPropStateFromPi(s pi.PropStateT) piplugin.PropStateT {
-	switch s {
-	case pi.PropStateUnvetted:
-		return piplugin.PropStateUnvetted
-	case pi.PropStateVetted:
-		return piplugin.PropStateVetted
-	}
-	return piplugin.PropStateInvalid
-}
-
 func convertRecordStatusFromPropStatus(s pi.PropStatusT) pd.RecordStatusT {
 	switch s {
 	case pi.PropStatusUnvetted:
@@ -437,7 +427,7 @@ func (p *politeiawww) proposalRecord(state pi.PropStateT, token, version string)
 
 	// Get proposal plugin data
 	ps := piplugin.Proposals{
-		State:  convertPropStateFromPi(state),
+		State:  p.convertPropStateFromPi(state),
 		Tokens: []string{token},
 	}
 	psr, err := p.proposalPluginData(ps)
@@ -518,7 +508,7 @@ func (p *politeiawww) proposalRecords(state pi.PropStateT, reqs []pi.ProposalReq
 		tokens = append(tokens, v.Token)
 	}
 	ps := piplugin.Proposals{
-		State:  convertPropStateFromPi(state),
+		State:  p.convertPropStateFromPi(state),
 		Tokens: tokens,
 	}
 	psr, err := p.proposalPluginData(ps)
@@ -1412,6 +1402,69 @@ func (p *politeiawww) handleProposalInventory(w http.ResponseWriter, r *http.Req
 	util.RespondWithJSON(w, http.StatusOK, ppi)
 }
 
+func (p *politeiawww) processCommentNew(cn pi.CommentNew, usr *user.User) (*pi.CommentNewReply, error) {
+	log.Tracef("processCommentNew: %v", usr.Username)
+
+	// Verify user has paid registration paywall
+	if !p.userHasPaid(*usr) {
+		return nil, pi.UserErrorReply{
+			ErrorCode: pi.ErrorStatusUserRegistrationNotPaid,
+		}
+	}
+
+	// Verify user signed using active identity
+	if usr.PublicKey() != cn.PublicKey {
+		return nil, pi.UserErrorReply{
+			ErrorCode:    pi.ErrorStatusPublicKeyInvalid,
+			ErrorContext: []string{"not user's active identity"},
+		}
+	}
+
+	// Call pi plugin to add new comment
+	reply, err := p.newComment(cn, usr)
+	if err != nil {
+		return nil, err
+	}
+
+	cnr := pi.CommentNewReply{
+		CommentID: reply.CommentID,
+		Timestamp: reply.Timestamp,
+		Receipt:   reply.Receipt,
+	}
+
+	return &cnr, nil
+}
+
+func (p *politeiawww) handleCommentNew(w http.ResponseWriter, r *http.Request) {
+	log.Tracef("handleCommentNew")
+
+	var cn pi.CommentNew
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&cn); err != nil {
+		respondWithPiError(w, r, "handleCommentNew: unmarshal",
+			pi.UserErrorReply{
+				ErrorCode: pi.ErrorStatusInvalidInput,
+			})
+		return
+	}
+
+	user, err := p.getSessionUser(w, r)
+	if err != nil {
+		respondWithPiError(w, r,
+			"handleCommentNew: getSessionUser: %v", err)
+		return
+	}
+
+	cnr, err := p.processCommentNew(cn, user)
+	if err != nil {
+		respondWithPiError(w, r,
+			"handleCommentNew: processCommentNew: %v", err)
+		return
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, cnr)
+}
+
 func (p *politeiawww) setPiRoutes() {
 	// Public routes
 	p.addRoute(http.MethodGet, pi.APIRoute,
@@ -1430,6 +1483,9 @@ func (p *politeiawww) setPiRoutes() {
 	p.addRoute(http.MethodPost, pi.APIRoute,
 		pi.RouteProposalSetStatus, p.handleProposalSetStatus,
 		permissionLogin)
+
+	p.addRoute(http.MethodPost, pi.APIRoute,
+		pi.RouteCommentNew, p.handleCommentNew, permissionLogin)
 
 	// Admin routes
 
