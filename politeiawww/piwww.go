@@ -162,16 +162,6 @@ func convertPropStateFromPropStatus(s pi.PropStatusT) pi.PropStateT {
 	return pi.PropStateInvalid
 }
 
-func convertPropStateFromPi(s pi.PropStateT) piplugin.PropStateT {
-	switch s {
-	case pi.PropStateUnvetted:
-		return piplugin.PropStateUnvetted
-	case pi.PropStateVetted:
-		return piplugin.PropStateVetted
-	}
-	return piplugin.PropStateInvalid
-}
-
 func convertRecordStatusFromPropStatus(s pi.PropStatusT) pd.RecordStatusT {
 	switch s {
 	case pi.PropStatusUnvetted:
@@ -437,7 +427,7 @@ func (p *politeiawww) proposalRecord(state pi.PropStateT, token, version string)
 
 	// Get proposal plugin data
 	ps := piplugin.Proposals{
-		State:  convertPropStateFromPi(state),
+		State:  p.convertPropStateFromPi(state),
 		Tokens: []string{token},
 	}
 	psr, err := p.proposalPluginData(ps)
@@ -518,7 +508,7 @@ func (p *politeiawww) proposalRecords(state pi.PropStateT, reqs []pi.ProposalReq
 		tokens = append(tokens, v.Token)
 	}
 	ps := piplugin.Proposals{
-		State:  convertPropStateFromPi(state),
+		State:  p.convertPropStateFromPi(state),
 		Tokens: tokens,
 	}
 	psr, err := p.proposalPluginData(ps)
