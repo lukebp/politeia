@@ -1421,7 +1421,7 @@ func (p *politeiawww) processCommentNew(cn pi.CommentNew, usr *user.User) (*pi.C
 	}
 
 	// Call pi plugin to add new comment
-	reply, err := p.newComment(cn, usr)
+	reply, err := p.piNewComment(cn, usr)
 	if err != nil {
 		return nil, err
 	}

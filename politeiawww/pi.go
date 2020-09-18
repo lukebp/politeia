@@ -21,7 +21,7 @@ func convertPropStateFromPi(s pi.PropStateT) piplugin.PropStateT {
 }
 
 // newComment calls the comments plugin to add new comment.
-func (p *politeiawww) newComment(cn pi.CommentNew, usr *user.User) (*piplugin.CommentNewReply, error) {
+func (p *politeiawww) piNewComment(cn pi.CommentNew, usr *user.User) (*piplugin.CommentNewReply, error) {
 	// Prep new comment payload
 	ncp := piplugin.CommentNew{
 		UUID:      usr.ID.String(),
