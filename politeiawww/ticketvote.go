@@ -9,7 +9,7 @@ import (
 	www "github.com/decred/politeia/politeiawww/api/www/v1"
 )
 
-// voteDetails calls ticketvote plugin command to get vote details.
+// voteDetails calls the ticketvote plugin command to get vote details.
 func (p *politeiawww) voteDetails(token string) (*ticketvote.DetailsReply, error) {
 	// Prep vote details payload
 	vdp := ticketvote.Details{
@@ -30,7 +30,7 @@ func (p *politeiawww) voteDetails(token string) (*ticketvote.DetailsReply, error
 	return vd, nil
 }
 
-// castVotes calls ticketvote plugin to retrieve cast votes information.
+// castVotes calls the ticketvote plugin to retrieve cast votes.
 func (p *politeiawww) castVotes(token string) (*ticketvote.CastVotesReply, error) {
 	// Prep cast votes payload
 	csp := ticketvote.CastVotes{
@@ -51,7 +51,7 @@ func (p *politeiawww) castVotes(token string) (*ticketvote.CastVotesReply, error
 	return cv, nil
 }
 
-// ballot calls ticketvote plugin to cast bunch of votes.
+// ballot calls the ticketvote plugin to cast a ballot of votes.
 func (p *politeiawww) ballot(ballot *www.Ballot) (*ticketvote.BallotReply, error) {
 	// Prep plugin command
 	var bp ticketvote.Ballot
@@ -85,7 +85,7 @@ func (p *politeiawww) ballot(ballot *www.Ballot) (*ticketvote.BallotReply, error
 	return b, nil
 }
 
-// summaries calls ticketvote plugin to get vote summaries information
+// summaries calls the ticketvote plugin to get vote summary information.
 func (p *politeiawww) voteSummaries(tokens []string) (*ticketvote.SummariesReply, error) {
 	// Prep plugin command
 	smp := ticketvote.Summaries{
