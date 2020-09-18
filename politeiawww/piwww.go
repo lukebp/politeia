@@ -427,7 +427,7 @@ func (p *politeiawww) proposalRecord(state pi.PropStateT, token, version string)
 
 	// Get proposal plugin data
 	ps := piplugin.Proposals{
-		State:  p.convertPropStateFromPi(state),
+		State:  convertPropStateFromPi(state),
 		Tokens: []string{token},
 	}
 	psr, err := p.proposalPluginData(ps)
@@ -508,7 +508,7 @@ func (p *politeiawww) proposalRecords(state pi.PropStateT, reqs []pi.ProposalReq
 		tokens = append(tokens, v.Token)
 	}
 	ps := piplugin.Proposals{
-		State:  p.convertPropStateFromPi(state),
+		State:  convertPropStateFromPi(state),
 		Tokens: tokens,
 	}
 	psr, err := p.proposalPluginData(ps)

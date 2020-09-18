@@ -10,7 +10,7 @@ import (
 	"github.com/decred/politeia/politeiawww/user"
 )
 
-func (p *politeiawww) convertPropStateFromPi(s pi.PropStateT) piplugin.PropStateT {
+func convertPropStateFromPi(s pi.PropStateT) piplugin.PropStateT {
 	switch s {
 	case pi.PropStateUnvetted:
 		return piplugin.PropStateUnvetted
@@ -30,7 +30,7 @@ func (p *politeiawww) newComment(cn pi.CommentNew, usr *user.User) (*piplugin.Co
 		Comment:   cn.Comment,
 		PublicKey: cn.PublicKey,
 		Signature: cn.Signature,
-		State:     p.convertPropStateFromPi(cn.State),
+		State:     convertPropStateFromPi(cn.State),
 	}
 	payload, err := piplugin.EncodeCommentNew(ncp)
 
