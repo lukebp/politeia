@@ -33,27 +33,22 @@ func (cmd *NewCommentCmd) Execute(args []string) error {
 
 	// Setup new comment request
 	sig := cfg.Identity.SignMessage([]byte(token + parentID + comment))
-	// Parse provided parent id
-	piUint, err := strconv.ParseUint(parentID, 10, 32)
-	if err != nil {
-		return err
-	}
-	cn := pi.CommentNew{
+	nc := &v1.NewComment{
 		Token:     token,
-		ParentID:  uint32(piUint),
+		ParentID:  parentID,
 		Comment:   comment,
 		Signature: hex.EncodeToString(sig[:]),
 		PublicKey: hex.EncodeToString(cfg.Identity.Public.Key[:]),
 	}
 
 	// Print request details
-	err = PrintJSON(cn)
+	err := shared.PrintJSON(nc)
 	if err != nil {
 		return err
 	}
 
 	// Send request
-	ncr, err := client.CommentNew(cn)
+	ncr, err := client.CmsNewComment(nc)
 	if err != nil {
 		return err
 	}
@@ -62,9 +57,9 @@ func (cmd *NewCommentCmd) Execute(args []string) error {
 	return shared.PrintJSON(ncr)
 }
 
-// newCommentHelpMsg is the output of the help command when 'newcomment' is
+// NewCommentHelpMsg is the output of the help command when 'newcomment' is
 // specified.
-const newCommentHelpMsg = `newcomment "token" "comment"
+const NewCommentHelpMsg = `newcomment "token" "comment"
 Comment on proposal as logged in user. 
 Arguments:
 1. token       (string, required)   Proposal censorship token
