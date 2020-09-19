@@ -1137,7 +1137,7 @@ func (c *Client) GetAllVetted(gav *www.GetAllVetted) (*www.GetAllVettedReply, er
 // WWWNewComment submits a new proposal comment for the logged in user.
 func (c *Client) WWWNewComment(nc *www.NewComment) (*www.NewCommentReply, error) {
 	responseBody, err := c.makeRequest(http.MethodPost,
-		www.PoliteiaWWWAPIRoute, www.RouteNewComment, nc)
+		pi.APIRoute, pi.RouteCommentNew, nc)
 	if err != nil {
 		return nil, err
 	}
@@ -1155,7 +1155,7 @@ func (c *Client) WWWNewComment(nc *www.NewComment) (*www.NewCommentReply, error)
 		}
 	}
 
-	return &ncr, nil
+	return &cnr, nil
 }
 
 // CommentNew submits a new proposal comment for the logged in user.
