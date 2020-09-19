@@ -1142,7 +1142,7 @@ func (c *Client) WWWNewComment(nc *www.NewComment) (*www.NewCommentReply, error)
 		return nil, err
 	}
 
-	var ncr www.NewCommentReply
+	var ncr pi.CommentNewReply
 	err = json.Unmarshal(responseBody, &ncr)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal NewCommentReply: %v", err)

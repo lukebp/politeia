@@ -33,9 +33,14 @@ func (cmd *NewCommentCmd) Execute(args []string) error {
 
 	// Setup new comment request
 	sig := cfg.Identity.SignMessage([]byte(token + parentID + comment))
-	nc := &v1.NewComment{
+	// Parse provided parent id
+	piUint, err := strconv.ParseUint(parentID, 10, 32)
+	if err != nil {
+		return err
+	}
+	nc := &pi.CommentNew{
 		Token:     token,
-		ParentID:  parentID,
+		ParentID:  uint32(piUint),
 		Comment:   comment,
 		Signature: hex.EncodeToString(sig[:]),
 		PublicKey: hex.EncodeToString(cfg.Identity.Public.Key[:]),
