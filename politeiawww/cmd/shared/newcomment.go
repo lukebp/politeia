@@ -38,7 +38,7 @@ func (cmd *NewCommentCmd) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	nc := &pi.CommentNew{
+	cn := pi.CommentNew{
 		Token:     token,
 		ParentID:  uint32(piUint),
 		Comment:   comment,
@@ -47,13 +47,13 @@ func (cmd *NewCommentCmd) Execute(args []string) error {
 	}
 
 	// Print request details
-	err = PrintJSON(nc)
+	err = PrintJSON(cn)
 	if err != nil {
 		return err
 	}
 
 	// Send request
-	ncr, err := client.NewComment(nc)
+	ncr, err := client.CommentNew(cn)
 	if err != nil {
 		return err
 	}
