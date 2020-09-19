@@ -1135,9 +1135,9 @@ func (c *Client) GetAllVetted(gav *www.GetAllVetted) (*www.GetAllVettedReply, er
 }
 
 // CommentNew submits a new proposal comment for the logged in user.
-func (c *Client) CommentNew(nc pi.CommentNew) (*pi.CommentNewReply, error) {
+func (c *Client) CommentNew(cn pi.CommentNew) (*pi.CommentNewReply, error) {
 	responseBody, err := c.makeRequest(http.MethodPost,
-		pi.APIRoute, pi.RouteCommentNew, nc)
+		pi.APIRoute, pi.RouteCommentNew, cn)
 	if err != nil {
 		return nil, err
 	}
