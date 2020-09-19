@@ -1142,14 +1142,14 @@ func (c *Client) NewComment(nc *pi.CommentNew) (*pi.CommentNewReply, error) {
 		return nil, err
 	}
 
-	var ncr pi.CommentNewReply
-	err = json.Unmarshal(responseBody, &ncr)
+	var cnr pi.CommentNewReply
+	err = json.Unmarshal(responseBody, &cnr)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal NewCommentReply: %v", err)
+		return nil, fmt.Errorf("unmarshal CommentNewReply: %v", err)
 	}
 
 	if c.cfg.Verbose {
-		err := prettyPrintJSON(ncr)
+		err := prettyPrintJSON(cnr)
 		if err != nil {
 			return nil, err
 		}
