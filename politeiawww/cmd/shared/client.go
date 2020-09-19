@@ -1137,7 +1137,7 @@ func (c *Client) GetAllVetted(gav *www.GetAllVetted) (*www.GetAllVettedReply, er
 // WWWNewComment submits a new proposal comment for the logged in user.
 func (c *Client) WWWNewComment(nc *www.NewComment) (*www.NewCommentReply, error) {
 	responseBody, err := c.makeRequest(http.MethodPost,
-		pi.APIRoute, pi.RouteCommentNew, nc)
+		pi.APIRoute, pi.RouteCommentNew, cn)
 	if err != nil {
 		return nil, err
 	}
