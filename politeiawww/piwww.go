@@ -1481,6 +1481,34 @@ func (p *politeiawww) handleCommentNew(w http.ResponseWriter, r *http.Request) {
 	util.RespondWithJSON(w, http.StatusOK, cnr)
 }
 
+func (p *politeiawww) handleCommentVote(w http.ResponseWriter, r *http.Request) {
+	log.Tracef("handleCommentVote")
+
+	var cv pi.CommentVote
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&cv); err != nil {
+		respondWithPiError(w, r, "handleCommentVote: unmarshal",
+			pi.UserErrorReply{
+				ErrorCode: pi.ErrorStatusInvalidInput,
+			})
+		return
+	}
+
+	user, err := p.getSessionUser(w, r)
+	if err != nil {
+		respondWithPiError(w, r,
+			"handleCommentVote: getSessionUser: %v", err)
+	}
+
+	vcr, err := p.processCommentVote(cv, user)
+	if err != nil {
+		respondWithPiError(w, r,
+			"handleCommentVote: processCommentVote: %v", err)
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, vcr)
+}
+
 func (p *politeiawww) setPiRoutes() {
 	// Public routes
 	p.addRoute(http.MethodGet, pi.APIRoute,
@@ -1502,6 +1530,9 @@ func (p *politeiawww) setPiRoutes() {
 
 	p.addRoute(http.MethodPost, pi.APIRoute,
 		pi.RouteCommentNew, p.handleCommentNew, permissionLogin)
+
+	p.addRoute(http.MethodPost, pi.APIRoute,
+		pi.RouteCommentVote, p.handleCommentVote, permissionLogin)
 
 	// Admin routes
 
