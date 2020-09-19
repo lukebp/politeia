@@ -50,7 +50,7 @@ type piwww struct {
 	ProposalSetStatus ProposalSetStatusCmd `command:"proposalsetstatus"`
 
 	// Comments commands
-	NewComment shared.NewCommentCmd `command:"newcomment" description:"(user)   create a new comment"`
+	CommentNew CommentNewCmd `command:"commentnew" description:"(user)   create a new comment"`
 
 	// Commands
 	ActiveVotes        ActiveVotesCmd           `command:"activevotes" description:"(public) get the proposals that are being voted on"`

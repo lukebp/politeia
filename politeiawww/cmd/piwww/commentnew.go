@@ -2,17 +2,18 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package shared
+package main
 
 import (
 	"encoding/hex"
 	"strconv"
 
 	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
+	"github.com/decred/politeia/politeiawww/cmd/shared"
 )
 
-// NewCommentCmd submits a new proposal comment.
-type NewCommentCmd struct {
+// CommentNewCmd submits a new proposal comment.
+type CommentNewCmd struct {
 	Args struct {
 		Token    string `positional-arg-name:"token" required:"true"`   // Censorship token
 		Comment  string `positional-arg-name:"comment" required:"true"` // Comment text
@@ -21,14 +22,14 @@ type NewCommentCmd struct {
 }
 
 // Execute executes the new comment command.
-func (cmd *NewCommentCmd) Execute(args []string) error {
+func (cmd *CommentNewCmd) Execute(args []string) error {
 	token := cmd.Args.Token
 	comment := cmd.Args.Comment
 	parentID := cmd.Args.ParentID
 
 	// Check for user identity
 	if cfg.Identity == nil {
-		return ErrUserIdentityNotFound
+		return shared.ErrUserIdentityNotFound
 	}
 
 	// Setup new comment request
@@ -47,7 +48,7 @@ func (cmd *NewCommentCmd) Execute(args []string) error {
 	}
 
 	// Print request details
-	err = PrintJSON(cn)
+	err = shared.PrintJSON(cn)
 	if err != nil {
 		return err
 	}
@@ -59,7 +60,7 @@ func (cmd *NewCommentCmd) Execute(args []string) error {
 	}
 
 	// Print response details
-	return PrintJSON(ncr)
+	return shared.PrintJSON(ncr)
 }
 
 // NewCommentHelpMsg is the output of the help command when 'newcomment' is

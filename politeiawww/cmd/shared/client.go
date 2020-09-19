@@ -1,4 +1,3 @@
-// Copyright (c) 2017-2019 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -1132,6 +1131,30 @@ func (c *Client) GetAllVetted(gav *www.GetAllVetted) (*www.GetAllVettedReply, er
 	}
 
 	return &gavr, nil
+}
+
+// CmsNewComment submits a new proposal comment for the logged in user.
+func (c *Client) CmsNewComment(nc *www.NewComment) (*www.NewCommentReply, error) {
+	responseBody, err := c.makeRequest(http.MethodPost,
+		www.PoliteiaWWWAPIRoute, www.RouteNewComment, nc)
+	if err != nil {
+		return nil, err
+	}
+
+	var ncr www.NewCommentReply
+	err = json.Unmarshal(responseBody, &ncr)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal NewCommentReply: %v", err)
+	}
+
+	if c.cfg.Verbose {
+		err := prettyPrintJSON(ncr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &ncr, nil
 }
 
 // CommentNew submits a new proposal comment for the logged in user.
