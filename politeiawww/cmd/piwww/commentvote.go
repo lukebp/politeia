@@ -82,30 +82,13 @@ func (cmd *CommentVoteCmd) Execute(args []string) error {
 	return shared.PrintJSON(cvr)
 }
 
-// likeCommentHelpMsg is the output for the help command when 'likecomment' is
+// commentVoteHelpMsg is the output for the help command when 'commentvote' is
 // specified.
-const likeCommentHelpMsg = `votecomment "token" "commentID" "action"
+const commentVoteHelpMsg = `commentvote "token" "commentID" "action"
 
 Vote on a comment.
 
 Arguments:
 1. token       (string, required)   Proposal censorship token
 2. commentID   (string, required)   Id of the comment
-3. action      (string, required)   Vote (upvote or downvote)
-
-Request:
-{
-  "token":      (string)  Censorship token
-  "commentid":  (string)  Id of comment
-  "action":     (string)  actionCode (upvote = '1', downvote = '-1')
-  "signature":  (string)  Signature of vote (token + commentID + actionCode)
-  "publickey":  (string)  Public key used for signature
-}
-
-Response:
-{
-  "total":    (uint64)  Total number of up and down votes
-  "result":   (int64)  Current tally of likes (can be negative)
-  "receipt":  (string)  Server signature of vote signature
-  "error":    (string)  Error if something went wrong during liking a comment
-}`
+3. action      (string, required)   Vote (upvote or downvote)`

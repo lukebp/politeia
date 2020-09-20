@@ -1137,25 +1137,25 @@ func (c *Client) GetAllVetted(gav *www.GetAllVetted) (*www.GetAllVettedReply, er
 // WWWNewComment submits a new proposal comment for the logged in user.
 func (c *Client) WWWNewComment(nc *www.NewComment) (*www.NewCommentReply, error) {
 	responseBody, err := c.makeRequest(http.MethodPost,
-		pi.APIRoute, pi.RouteCommentNew, cn)
+		www.PoliteiaWWWAPIRoute, www.RouteNewComment, nc)
 	if err != nil {
 		return nil, err
 	}
 
-	var cnr pi.CommentNewReply
-	err = json.Unmarshal(responseBody, &cnr)
+	var ncr www.NewCommentReply
+	err = json.Unmarshal(responseBody, &ncr)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal CommentNewReply: %v", err)
+		return nil, fmt.Errorf("unmarshal NewCommentReply: %v", err)
 	}
 
 	if c.cfg.Verbose {
-		err := prettyPrintJSON(cnr)
+		err := prettyPrintJSON(ncr)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return &cnr, nil
+	return &ncr, nil
 }
 
 // CommentNew submits a new proposal comment for the logged in user.

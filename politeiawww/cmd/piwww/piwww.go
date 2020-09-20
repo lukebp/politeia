@@ -51,7 +51,7 @@ type piwww struct {
 
 	// Comments commands
 	CommentNew  CommentNewCmd  `command:"commentnew" description:"(user)   create a new comment"`
-	CommentLike CommentVoteCmd `command:"likecomment" description:"(user)   upvote/downvote a comment"`
+	CommentVote CommentVoteCmd `command:"commentvote" description:"(user)   upvote/downvote a comment"`
 
 	// Commands
 	ActiveVotes        ActiveVotesCmd           `command:"activevotes" description:"(public) get the proposals that are being voted on"`
