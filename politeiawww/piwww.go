@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/decred/politeia/plugins/comments"
 	piplugin "github.com/decred/politeia/plugins/pi"
 	pd "github.com/decred/politeia/politeiad/api/v1"
 	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
@@ -24,6 +25,7 @@ import (
 	"github.com/decred/politeia/politeiawww/user"
 	wwwutil "github.com/decred/politeia/politeiawww/util"
 	"github.com/decred/politeia/util"
+	"github.com/google/uuid"
 )
 
 // TODO use pi policies. Should the policies be defined in the pi plugin
@@ -240,6 +242,36 @@ func convertCensorshipRecordFromPD(cr pd.CensorshipRecord) pi.CensorshipRecord {
 		Token:     cr.Token,
 		Merkle:    cr.Merkle,
 		Signature: cr.Signature,
+	}
+}
+
+func convertCommentsPluginPropStateFromPi(s pi.PropStateT) comments.StateT {
+	switch s {
+	case pi.PropStateUnvetted:
+		return comments.StateUnvetted
+	case pi.PropStateVetted:
+		return comments.StateVetted
+	}
+	return comments.StateInvalid
+}
+
+func convertPluginCommentToPi(cm comments.Comment, state pi.PropStateT, username string) pi.Comment {
+	return pi.Comment{
+		UserID:    cm.UUID,
+		Username:  username,
+		State:     state,
+		Token:     cm.Token,
+		ParentID:  cm.ParentID,
+		Comment:   cm.Comment,
+		PublicKey: cm.PublicKey,
+		Signature: cm.Signature,
+		CommentID: cm.CommentID,
+		Version:   cm.Version,
+		Timestamp: cm.Timestamp,
+		Receipt:   cm.Receipt,
+		Score:     cm.Score,
+		Deleted:   cm.Deleted,
+		Reason:    cm.Reason,
 	}
 }
 
@@ -1521,6 +1553,40 @@ func (p *politeiawww) handleCommentVote(w http.ResponseWriter, r *http.Request) 
 	}
 
 	util.RespondWithJSON(w, http.StatusOK, vcr)
+}
+
+func (p *politeiawww) processComments(c pi.Comments) (*pi.CommentsReply, error) {
+	log.Tracef("processComments: %v", c.Token)
+
+	// Call comments plugin to get comments
+	reply, err := p.comments(comments.GetAll{
+		Token: c.Token,
+		State: convertCommentsPluginPropStateFromPi(c.State),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var cr pi.CommentsReply
+	// Transalte comments
+	cs := make([]pi.Comment, 0, len(reply.Comments))
+	for _, cm := range reply.Comments {
+		// Get comment's author username
+		// Parse string uuid
+		uuid, err := uuid.Parse(cm.UUID)
+		if err != nil {
+			return nil, err
+		}
+		// Get user
+		u, err := p.db.UserGetById(uuid)
+		if err != nil {
+			return nil, err
+		}
+		cs = append(cs, convertPluginCommentToPi(cm, c.State, u.Username))
+	}
+	cr.Comments = cs
+
+	return &cr, nil
 }
 
 func (p *politeiawww) handleComments(w http.ResponseWriter, r *http.Request) {

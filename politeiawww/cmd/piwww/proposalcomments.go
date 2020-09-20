@@ -11,8 +11,8 @@ import (
 	"github.com/decred/politeia/politeiawww/cmd/shared"
 )
 
-// ProposalCommentsCmd retreives the comments for the specified proposal.
-type ProposalCommentsCmd struct {
+// CommentsCmd retreives the comments for the specified proposal.
+type CommentsCmd struct {
 	Args struct {
 		Token string `positional-arg-name:"token"` // Censorship token
 	} `positional-args:"true" required:"true"`
@@ -23,7 +23,7 @@ type ProposalCommentsCmd struct {
 }
 
 // Execute executes the proposal comments command.
-func (cmd *ProposalCommentsCmd) Execute(args []string) error {
+func (cmd *CommentsCmd) Execute(args []string) error {
 	token := cmd.Args.Token
 
 	// Verify state
@@ -39,7 +39,7 @@ func (cmd *ProposalCommentsCmd) Execute(args []string) error {
 		return fmt.Errorf("must specify either --vetted or unvetted")
 	}
 
-	gcr, err := client.GetComments(pi.Comments{
+	gcr, err := client.Comments(pi.Comments{
 		Token: token,
 		State: state,
 	})
