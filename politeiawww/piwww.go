@@ -1102,15 +1102,16 @@ func (p *politeiawww) processProposalEdit(pe pi.ProposalEdit, usr user.User) (*p
 	// Send politeiad request
 	// TODO verify that this will throw an error if no proposal files
 	// were changed.
+	var cr *pd.CensorshipRecord
 	switch pe.State {
 	case pi.PropStateUnvetted:
-		err = p.updateUnvetted(pe.Token, mdAppend, mdOverwrite,
+		cr, err = p.updateUnvetted(pe.Token, mdAppend, mdOverwrite,
 			filesAdd, filesDel)
 		if err != nil {
 			return nil, err
 		}
 	case pi.PropStateVetted:
-		err = p.updateVetted(pe.Token, mdAppend, mdOverwrite,
+		cr, err = p.updateVetted(pe.Token, mdAppend, mdOverwrite,
 			filesAdd, filesDel)
 		if err != nil {
 			return nil, err
@@ -1134,8 +1135,8 @@ func (p *politeiawww) processProposalEdit(pe pi.ProposalEdit, usr user.User) (*p
 	}
 
 	return &pi.ProposalEditReply{
-		// TODO CensorshipRecord: cr,
-		Timestamp: timestamp,
+		CensorshipRecord: convertCensorshipRecordFromPD(*cr),
+		Timestamp:        timestamp,
 	}, nil
 }
 
