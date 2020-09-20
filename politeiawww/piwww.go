@@ -1444,13 +1444,11 @@ func (p *politeiawww) processCommentNew(cn pi.CommentNew, usr *user.User) (*pi.C
 		return nil, err
 	}
 
-	cnr := pi.CommentNewReply{
+	return &pi.CommentNewReply{
 		CommentID: reply.CommentID,
 		Timestamp: reply.Timestamp,
 		Receipt:   reply.Receipt,
-	}
-
-	return &cnr, nil
+	}, nil
 }
 
 func (p *politeiawww) handleCommentNew(w http.ResponseWriter, r *http.Request) {

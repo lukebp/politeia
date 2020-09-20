@@ -48,7 +48,7 @@ func (cmd *NewCommentCmd) Execute(args []string) error {
 	}
 
 	// Send request
-	ncr, err := client.CmsNewComment(nc)
+	ncr, err := client.WWWNewComment(nc)
 	if err != nil {
 		return err
 	}

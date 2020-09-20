@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2019 The Decred developers
+// Copyright (c) 2017-2020 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -65,40 +65,11 @@ func (cmd *CommentNewCmd) Execute(args []string) error {
 
 // NewCommentHelpMsg is the output of the help command when 'newcomment' is
 // specified.
-const NewCommentHelpMsg = `newcomment "token" "comment"
+const CommentNewHelpMsg = `commentnew "token" "comment"
 
 Comment on proposal as logged in user. 
 
 Arguments:
 1. token       (string, required)   Proposal censorship token
 2. comment     (string, required)   Comment
-3. parentID    (string, required if replying to comment)  Id of commment
-
-Request:
-{
-  "token":       (string)  Censorship token
-  "parentid":    (string)  Id of comment (defaults to '0' (top-level comment))
-  "comment":     (string)  Comment
-  "signature":   (string)  Signature of comment (token+parentID+comment)
-  "publickey":   (string)  Public key of user commenting
-}
-
-Response:
-{
-  "comment": {
-    "token":        (string)  Censorship token
-    "parentid":     (string)  Id of comment (defaults to '0' (top-level))
-    "comment":      (string)  Comment
-    "signature":    (string)  Signature of token+parentID+comment
-    "publickey":    (string)  Public key of user 
-    "commentid":    (string)  Id of the comment
-    "receipt":      (string)  Server signature of the comment signature
-    "timestamp":    (int64)   Received UNIX timestamp
-    "resultvotes":  (int64)   Vote score
-    "upvotes":      (uint64)  Pro votes
-    "downvotes":    (uint64)  Contra votes
-    "censored":     (bool)    If comment has been censored
-    "userid":       (string)  User id
-    "username":     (string)  Username
-  }
-}`
+3. parentID    (string, required if replying to comment)  Id of commment`
