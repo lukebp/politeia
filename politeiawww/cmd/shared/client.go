@@ -1183,10 +1183,7 @@ func (c *Client) CommentNew(cn pi.CommentNew) (*pi.CommentNewReply, error) {
 }
 
 // GetComments retrieves the comments for the specified proposal.
-func (c *Client) GetComments(token string) (*pi.CommentsReply, error) {
-	cs := pi.Comments{
-		Token: token,
-	}
+func (c *Client) GetComments(cs pi.Comments) (*pi.CommentsReply, error) {
 	responseBody, err := c.makeRequest(http.MethodPost,
 		pi.APIRoute, pi.RouteComments, &cs)
 	if err != nil {
