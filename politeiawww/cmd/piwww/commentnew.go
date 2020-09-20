@@ -63,9 +63,9 @@ func (cmd *CommentNewCmd) Execute(args []string) error {
 	return shared.PrintJSON(ncr)
 }
 
-// NewCommentHelpMsg is the output of the help command when 'newcomment' is
+// commentNewHelpMsg is the output of the help command when 'newcomment' is
 // specified.
-const CommentNewHelpMsg = `commentnew "token" "comment"
+const commentNewHelpMsg = `commentnew "token" "comment"
 
 Comment on proposal as logged in user. 
 

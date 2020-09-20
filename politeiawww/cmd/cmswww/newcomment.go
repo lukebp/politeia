@@ -57,9 +57,9 @@ func (cmd *NewCommentCmd) Execute(args []string) error {
 	return shared.PrintJSON(ncr)
 }
 
-// NewCommentHelpMsg is the output of the help command when 'newcomment' is
+// newCommentHelpMsg is the output of the help command when 'newcomment' is
 // specified.
-const NewCommentHelpMsg = `newcomment "token" "comment"
+const newCommentHelpMsg = `newcomment "token" "comment"
 Comment on proposal as logged in user. 
 Arguments:
 1. token       (string, required)   Proposal censorship token
