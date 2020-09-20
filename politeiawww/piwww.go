@@ -1526,13 +1526,11 @@ func (p *politeiawww) processCommentVote(cv pi.CommentVote, usr user.User) (*pi.
 		return nil, err
 	}
 
-	cvr := pi.CommentVoteReply{
+	return &pi.CommentVoteReply{
 		Score:     reply.Score,
 		Timestamp: reply.Timestamp,
 		Receipt:   reply.Receipt,
-	}
-
-	return &cvr, nil
+	}, nil
 }
 
 func (p *politeiawww) handleCommentVote(w http.ResponseWriter, r *http.Request) {
