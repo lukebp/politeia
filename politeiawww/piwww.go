@@ -1393,7 +1393,7 @@ func (p *politeiawww) processCommentNew(cn pi.CommentNew, usr user.User) (*pi.Co
 	}
 
 	// Call pi plugin to add new comment
-	reply, err := p.piCommentNew(&piplugin.CommentNew{
+	reply, err := p.piCommentNew(piplugin.CommentNew{
 		UUID:      usr.ID.String(),
 		Token:     cn.Token,
 		ParentID:  cn.ParentID,
@@ -1475,7 +1475,7 @@ func (p *politeiawww) processCommentVote(cv pi.CommentVote, usr user.User) (*pi.
 	}
 
 	// Call pi plugin to add new comment
-	reply, err := p.piCommentVote(&piplugin.CommentVote{
+	reply, err := p.piCommentVote(piplugin.CommentVote{
 		UUID:      usr.ID.String(),
 		Token:     cv.Token,
 		CommentID: cv.CommentID,
@@ -1523,11 +1523,34 @@ func (p *politeiawww) handleCommentVote(w http.ResponseWriter, r *http.Request) 
 	util.RespondWithJSON(w, http.StatusOK, vcr)
 }
 
+func (p *politeiawww) handleComments(w http.ResponseWriter, r *http.Request) {
+	log.Tracef("handleComments")
+
+	var c pi.Comments
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&c); err != nil {
+		respondWithPiError(w, r, "handleComments: unmarshal",
+			pi.UserErrorReply{})
+		return
+	}
+
+	cr, err := p.processComments(c)
+	if err != nil {
+		respondWithPiError(w, r,
+			"handleCommentVote: processComments: %v", err)
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, cr)
+}
+
 func (p *politeiawww) setPiRoutes() {
 	// Public routes
 	p.addRoute(http.MethodGet, pi.APIRoute,
 		pi.RouteProposalInventory, p.handleProposalInventory,
 		permissionPublic)
+
+	p.addRoute(http.MethodPost, pi.APIRoute,
+		pi.RouteComments, p.handleComments, permissionPublic)
 
 	// Logged in routes
 	p.addRoute(http.MethodPost, pi.APIRoute,

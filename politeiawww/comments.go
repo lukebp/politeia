@@ -5,9 +5,82 @@
 package main
 
 import (
+	"github.com/decred/politeia/plugins/comments"
+	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
 	www "github.com/decred/politeia/politeiawww/api/www/v1"
 	"github.com/decred/politeia/politeiawww/user"
 )
+
+func convertCommentsPluginPropStateFromPi(s pi.PropStateT) comments.StateT {
+	switch s {
+	case pi.PropStateUnvetted:
+		return comments.StateUnvetted
+	case pi.PropStateVetted:
+		return comments.StateVetted
+	}
+	return comments.StateInvalid
+}
+
+func (p *politeiawww) processComments(c pi.Comments) (*pi.CommentsReply, error) {
+	log.Tracef("processComments: %v", c.Token)
+
+	// Call comments plugin to get comments
+	reply, err := p.comments(comments.GetAll{
+		Token: c.Token,
+		State: convertCommentsPluginPropStateFromPi(c.State),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var cr pi.CommentsReply
+	// Transalte comments
+	cs := make([]pi.Comment, 0, len(reply.Comments))
+	for _, cm := range reply.Comments {
+		cs = append(cs, pi.Comment{
+			UserID: cm.UUID,
+			// Username: ???
+			State:     c.State,
+			Token:     cm.Token,
+			ParentID:  cm.ParentID,
+			Comment:   cm.Comment,
+			PublicKey: cm.PublicKey,
+			Signature: cm.Signature,
+			CommentID: cm.CommentID,
+			Version:   cm.Version,
+			Timestamp: cm.Timestamp,
+			Receipt:   cm.Receipt,
+			Score:     cm.Score,
+			Deleted:   cm.Deleted,
+			Reason:    cm.Reason,
+		})
+	}
+	cr.Comments = cs
+
+	return &cr, nil
+}
+
+// comments call the comments plugin to get record's comments.
+func (p *politeiawww) comments(cp comments.GetAll) (*comments.GetAllReply, error) {
+	// Prep plugin payload
+	payload, err := comments.EncodeGetAll(cp)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := p.pluginCommand(comments.ID, comments.CmdGetAll, "",
+		string(payload))
+	if err != nil {
+		return nil, err
+	}
+	cr, err := comments.DecodeGetAllReply([]byte(r))
+	if err != nil {
+		return nil, err
+	}
+
+	return cr, nil
+
+}
 
 func validateComment(c www.NewComment) error {
 	// max length
