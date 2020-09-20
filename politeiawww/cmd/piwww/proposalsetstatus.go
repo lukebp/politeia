@@ -123,5 +123,5 @@ Arguments:
 
 Flags:
   --vetted   (bool, optional)    Set status of a vetted record.
-	--unvetted (bool, optional)    Set status of an unvetted reocrd.
+  --unvetted (bool, optional)    Set status of an unvetted reocrd.
 `

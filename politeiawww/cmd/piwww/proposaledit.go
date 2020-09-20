@@ -247,7 +247,7 @@ Arguments:
 
 Flags:
   --vetted   (bool, optional)    Comment on vetted record.
-	--unvetted (bool, optional)    Comment on unvetted reocrd.
+  --unvetted (bool, optional)    Comment on unvetted reocrd.
   --random   (bool, optional)    Generate a random proposal name & files to
                                  submit. If this flag is used then the markdown
                                  file argument is no longer required and any 

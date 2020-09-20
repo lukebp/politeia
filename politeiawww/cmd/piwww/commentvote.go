@@ -114,5 +114,5 @@ Arguments:
 
 Flags:
   --vetted     (bool, optional)     Comment's record is vetted.
-	--unvetted   (bool, optional)     Comment's record is unvetted.
+  --unvetted   (bool, optional)     Comment's record is unvetted.
 `

@@ -96,5 +96,5 @@ Arguments:
 
 Flags:
   --vetted     (bool, optional)    Comment on vetted record.
-	--unvetted   (bool, optional)    Comment on unvetted reocrd.
+  --unvetted   (bool, optional)    Comment on unvetted reocrd.
 `
