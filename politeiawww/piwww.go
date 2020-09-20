@@ -1239,52 +1239,13 @@ func (p *politeiawww) processProposalSetStatus(pss pi.ProposalSetStatus, usr use
 	}
 
 	// Emit status change event
-	var (
-		r      *pd.Record
-		pr     *pi.ProposalRecord
-		author *user.User
-	)
-	switch pss.State {
-	case pi.PropStateUnvetted:
-		r, err = p.getUnvettedLatest(pss.Token)
-		if err != nil {
-			err = fmt.Errorf("getUnvettedLatest: %v", err)
-			goto reply
-		}
-	case pi.PropStateVetted:
-		r, err = p.getVettedLatest(pss.Token)
-		if err != nil {
-			err = fmt.Errorf("getVettedLatest: %v", err)
-			goto reply
-		}
-	}
-	pr, err = convertProposalRecordFromPD(*r)
-	if err != nil {
-		err = fmt.Errorf("convertProposalRecordFromPD: %v", err)
-		goto reply
-	}
-	author, err = p.db.UserGetByPubKey(pr.PublicKey)
-	if err != nil {
-		err = fmt.Errorf("UserGetByPubKey: %v", err)
-		goto reply
-	}
 	p.eventManager.emit(eventProposalStatusChange,
 		dataProposalStatusChange{
-			name:    proposalName(*pr),
 			token:   pss.Token,
 			status:  pss.Status,
 			reason:  pss.Reason,
 			adminID: usr.ID.String(),
-			author:  *author,
 		})
-
-reply:
-	// If an error exists at this point it means the error was from
-	// an action that occured after the status had been updated in
-	// politeiad. Log it and return a normal reply.
-	if err != nil {
-		log.Errorf("processProposalSetStatus: %v", err)
-	}
 
 	return &pi.ProposalSetStatusReply{
 		Timestamp: timestamp,
