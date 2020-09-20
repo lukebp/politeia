@@ -8,7 +8,7 @@ import (
 	piplugin "github.com/decred/politeia/plugins/pi"
 )
 
-// newComment calls the pi plugin to add new comment.
+// piCommentNew calls the pi plugin to add new comment.
 func (p *politeiawww) piCommentNew(ncp *piplugin.CommentNew) (*piplugin.CommentNewReply, error) {
 	// Prep new comment payload
 	payload, err := piplugin.EncodeCommentNew(*ncp)
