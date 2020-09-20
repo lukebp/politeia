@@ -9,6 +9,7 @@ import (
 	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
 	www "github.com/decred/politeia/politeiawww/api/www/v1"
 	"github.com/decred/politeia/politeiawww/user"
+	"github.com/google/uuid"
 )
 
 func convertCommentsPluginPropStateFromPi(s pi.PropStateT) comments.StateT {
@@ -37,9 +38,20 @@ func (p *politeiawww) processComments(c pi.Comments) (*pi.CommentsReply, error) 
 	// Transalte comments
 	cs := make([]pi.Comment, 0, len(reply.Comments))
 	for _, cm := range reply.Comments {
+		// Get comment's author username
+		// Parse string uuid
+		uuid, err := uuid.Parse(cm.UUID)
+		if err != nil {
+			return nil, err
+		}
+		// Get user
+		u, err := p.db.UserGetById(uuid)
+		if err != nil {
+			return nil, err
+		}
 		cs = append(cs, pi.Comment{
-			UserID: cm.UUID,
-			// Username: ???
+			UserID:    cm.UUID,
+			Username:  u.Username,
 			State:     c.State,
 			Token:     cm.Token,
 			ParentID:  cm.ParentID,
