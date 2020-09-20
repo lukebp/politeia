@@ -255,11 +255,21 @@ func convertCommentsPluginPropStateFromPi(s pi.PropStateT) comments.StateT {
 	return comments.StateInvalid
 }
 
-func convertPluginCommentToPi(cm comments.Comment, state pi.PropStateT, username string) pi.Comment {
+func convertPropStateFromComments(s comments.StateT) pi.PropStateT {
+	switch s {
+	case comments.StateUnvetted:
+		return pi.PropStateUnvetted
+	case comments.StateVetted:
+		return pi.PropStateVetted
+	}
+	return pi.PropStateInvalid
+}
+
+func convertCommentFromPlugin(cm comments.Comment) pi.Comment {
 	return pi.Comment{
 		UserID:    cm.UUID,
-		Username:  username,
-		State:     state,
+		Username:  "", // Intentionally omitted, needs to be pulled from userdb
+		State:     convertPropStateFromComments(cm.State),
 		Token:     cm.Token,
 		ParentID:  cm.ParentID,
 		Comment:   cm.Comment,
@@ -1619,6 +1629,8 @@ func (p *politeiawww) processComments(c pi.Comments) (*pi.CommentsReply, error) 
 	// Transalte comments
 	cs := make([]pi.Comment, 0, len(reply.Comments))
 	for _, cm := range reply.Comments {
+		// Convert comment to pi
+		pic := convertCommentFromPlugin(cm)
 		// Get comment's author username
 		// Parse string uuid
 		uuid, err := uuid.Parse(cm.UUID)
@@ -1630,7 +1642,8 @@ func (p *politeiawww) processComments(c pi.Comments) (*pi.CommentsReply, error) 
 		if err != nil {
 			return nil, err
 		}
-		cs = append(cs, convertPluginCommentToPi(cm, c.State, u.Username))
+		pic.Username = u.Username
+		cs = append(cs, pic)
 	}
 	cr.Comments = cs
 
