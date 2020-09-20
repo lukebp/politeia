@@ -1495,7 +1495,7 @@ func convertVoteFromPi(v pi.CommentVoteT) piplugin.VoteT {
 }
 
 func (p *politeiawww) processCommentVote(cv pi.CommentVote, usr user.User) (*pi.CommentVoteReply, error) {
-	log.Tracef("processCommentVote")
+	log.Tracef("processCommentVote: %v %v %v", cv.Token, cv.CommentID, cv.Vote)
 
 	// Verify user has paid registration paywall
 	if !p.userHasPaid(usr) {
