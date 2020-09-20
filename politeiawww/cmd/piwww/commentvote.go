@@ -7,14 +7,15 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"strconv"
 
-	v1 "github.com/decred/politeia/politeiawww/api/www/v1"
+	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
 	"github.com/decred/politeia/politeiawww/cmd/shared"
 )
 
-// LikeCommentCmd is used to upvote/downvote a proposal comment using the
+// CommentVoteCmd is used to upvote/downvote a proposal comment using the
 // logged in the user.
-type LikeCommentCmd struct {
+type CommentVoteCmd struct {
 	Args struct {
 		Token     string `positional-arg-name:"token"`     // Censorship token
 		CommentID string `positional-arg-name:"commentID"` // Comment ID
@@ -23,7 +24,7 @@ type LikeCommentCmd struct {
 }
 
 // Execute executes the like comment command.
-func (cmd *LikeCommentCmd) Execute(args []string) error {
+func (cmd *CommentVoteCmd) Execute(args []string) error {
 	const actionUpvote = "upvote"
 	const actionDownvote = "downvote"
 
@@ -42,38 +43,43 @@ func (cmd *LikeCommentCmd) Execute(args []string) error {
 		return shared.ErrUserIdentityNotFound
 	}
 
-	// Setup like comment request
-	var actionCode string
+	// Setup pi comment vote request
+	var vote pi.CommentVoteT
 	switch action {
 	case actionUpvote:
-		actionCode = v1.VoteActionUp
+		vote = pi.CommentVoteUpvote
 	case actionDownvote:
-		actionCode = v1.VoteActionDown
+		vote = pi.CommentVoteDownvote
 	}
 
-	sig := cfg.Identity.SignMessage([]byte(token + commentID + actionCode))
-	lc := &v1.LikeComment{
+	sig := cfg.Identity.SignMessage([]byte(token + commentID + string(vote)))
+	// Parse provided parent id
+	ciUint, err := strconv.ParseUint(commentID, 10, 32)
+	if err != nil {
+		return err
+	}
+	cv := &pi.CommentVote{
 		Token:     token,
-		CommentID: commentID,
-		Action:    actionCode,
+		CommentID: uint32(ciUint),
+		Vote:      vote,
 		Signature: hex.EncodeToString(sig[:]),
 		PublicKey: hex.EncodeToString(cfg.Identity.Public.Key[:]),
 	}
 
 	// Print request details
-	err := shared.PrintJSON(lc)
+	err = shared.PrintJSON(cv)
 	if err != nil {
 		return err
 	}
 
 	// Send request
-	lcr, err := client.LikeComment(lc)
+	cvr, err := client.CommentVote(cv)
 	if err != nil {
 		return err
 	}
 
 	// Print response details
-	return shared.PrintJSON(lcr)
+	return shared.PrintJSON(cvr)
 }
 
 // likeCommentHelpMsg is the output for the help command when 'likecomment' is
