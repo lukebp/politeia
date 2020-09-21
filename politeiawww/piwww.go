@@ -1169,11 +1169,9 @@ func (p *politeiawww) processProposalSetStatus(pss pi.ProposalSetStatus, usr use
 		}
 	}
 
-	// Verify user is an admin
+	// Sanity check
 	if !usr.Admin {
-		return nil, pi.UserErrorReply{
-			ErrorCode: pi.ErrorStatusUserIsNotAdmin,
-		}
+		return nil, fmt.Errorf("user not admin")
 	}
 
 	// Verify user signed with their active identity
@@ -1632,7 +1630,7 @@ func (p *politeiawww) handleComments(w http.ResponseWriter, r *http.Request) {
 	util.RespondWithJSON(w, http.StatusOK, cr)
 }
 
-func (p *politeiawww) processCommentCensor(cc pi.CommentCensor) (*pi.CommentCensorReply, error) {
+func (p *politeiawww) processCommentCensor(cc pi.CommentCensor, usr user.User) (*pi.CommentCensorReply, error) {
 	log.Tracef("processCommentCensor: %v %v", cc.Token, cc.CommentID)
 
 	// Call comments plugin to censor comment
@@ -1665,7 +1663,14 @@ func (p *politeiawww) handleCommentCensor(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ccr, err := p.processCommentCensor(cc)
+	user, err := p.getSessionUser(w, r)
+	if err != nil {
+		respondWithPiError(w, r,
+			"handleCommentCensor: getSessionUser: %v", err)
+		return
+	}
+
+	ccr, err := p.processCommentCensor(cc, *user)
 	if err != nil {
 		respondWithPiError(w, r,
 			"handleCommentCensor: processCommentCensor: %v", err)
