@@ -1169,9 +1169,11 @@ func (p *politeiawww) processProposalSetStatus(pss pi.ProposalSetStatus, usr use
 		}
 	}
 
-	// Sanity check
+	// Verify user is an admin
 	if !usr.Admin {
-		return nil, fmt.Errorf("user not admin")
+		return nil, pi.UserErrorReply{
+			ErrorCode: pi.ErrorStatusUserIsNotAdmin,
+		}
 	}
 
 	// Verify user signed with their active identity
@@ -1632,6 +1634,19 @@ func (p *politeiawww) handleComments(w http.ResponseWriter, r *http.Request) {
 
 func (p *politeiawww) processCommentCensor(cc pi.CommentCensor, usr user.User) (*pi.CommentCensorReply, error) {
 	log.Tracef("processCommentCensor: %v %v", cc.Token, cc.CommentID)
+
+	// Sanity check
+	if !usr.Admin {
+		return nil, fmt.Errorf("user not admin")
+	}
+
+	// Verify user signed with their active identity
+	if usr.PublicKey() != cc.PublicKey {
+		return nil, pi.UserErrorReply{
+			ErrorCode:    pi.ErrorStatusPublicKeyInvalid,
+			ErrorContext: []string{"not user's active identity"},
+		}
+	}
 
 	// Call comments plugin to censor comment
 	reply, err := p.commentCensor(comments.Del{
