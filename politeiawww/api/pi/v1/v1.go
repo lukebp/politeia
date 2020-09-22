@@ -363,7 +363,7 @@ type ProposalsReply struct {
 	Proposals map[string]ProposalRecord `json:"proposals"` // [token]Proposal
 }
 
-// ProposalInventry retrieves the tokens of all proposals in the inventory,
+// ProposalInventory retrieves the tokens of all proposals in the inventory,
 // catagorized by proposal status and ordered by timestamp of the status change
 // from newest to oldest.
 type ProposalInventory struct{}
@@ -545,8 +545,8 @@ type VoteOption struct {
 // VoteDetails includes all data required by server to start vote on a
 // proposal.
 type VoteDetails struct {
-	Token    string `json:"token"`    // Record token
-	Version  uint32 `json:"version"`  // Record version
+	Token    string `json:"token"`    // Proposal token
+	Version  uint32 `json:"version"`  // Proposal version
 	Type     VoteT  `json:"type"`     // Vote type
 	Mask     uint64 `json:"mask"`     // Valid vote bits
 	Duration uint32 `json:"duration"` // Duration in blocks
