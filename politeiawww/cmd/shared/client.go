@@ -1581,29 +1581,29 @@ func (c *Client) EditUser(eu *www.EditUser) (*www.EditUserReply, error) {
 	return &eur, nil
 }
 
-// AuthorizeVote authorizes the voting period for the specified proposal using
+// VoteAuthorize authorizes the voting period for the specified proposal using
 // the logged in user.
-func (c *Client) AuthorizeVote(av *www.AuthorizeVote) (*www.AuthorizeVoteReply, error) {
-	responseBody, err := c.makeRequest(http.MethodPost, www.PoliteiaWWWAPIRoute,
-		www.RouteAuthorizeVote, av)
+func (c *Client) VoteAuthorize(va *pi.VoteAuthorize) (*pi.VoteAuthorizeReply, error) {
+	responseBody, err := c.makeRequest(http.MethodPost, pi.APIRoute,
+		pi.RouteVoteAuthorize, va)
 	if err != nil {
 		return nil, err
 	}
 
-	var avr www.AuthorizeVoteReply
-	err = json.Unmarshal(responseBody, &avr)
+	var vr pi.VoteAuthorizeReply
+	err = json.Unmarshal(responseBody, &vr)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal AuthorizeVoteReply: %v", err)
+		return nil, fmt.Errorf("unmarshal VoteAuthorizeReply: %v", err)
 	}
 
 	if c.cfg.Verbose {
-		err := prettyPrintJSON(avr)
+		err := prettyPrintJSON(vr)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return &avr, nil
+	return &vr, nil
 }
 
 // VoteStatus retrieves the vote status for the specified proposal.
