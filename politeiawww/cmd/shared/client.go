@@ -1231,9 +1231,9 @@ func (c *Client) InvoiceComments(token string) (*www.GetCommentsReply, error) {
 	return &gcr, nil
 }
 
-// UserCommentVotes retrieves the comment likes (upvotes/downvotes) for the
-// specified proposal that are from the logged in user.
-func (c *Client) UserCommentVotes(cv pi.CommentVotes) (*pi.CommentVotesReply, error) {
+// CommentVotes retrieves the comment likes (upvotes/downvotes) for the
+// specified proposal that are from the privoded user.
+func (c *Client) CommentVotes(cv pi.CommentVotes) (*pi.CommentVotesReply, error) {
 	responseBody, err := c.makeRequest(http.MethodPost,
 		pi.APIRoute, pi.RouteCommentVotes, cv)
 	if err != nil {
