@@ -98,7 +98,7 @@ func (cmd *VoteAuthorizeCmd) Execute(args []string) error {
 	return shared.PrintJSON(vr)
 }
 
-// voteAuthorizeHelpMsg is the output of the help command when 'authorizevote'
+// voteAuthorizeHelpMsg is the output of the help command when 'voteauthorize'
 // is specified.
 const voteAuthorizeHelpMsg = `voteauthorize "token" "action"
 
