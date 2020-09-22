@@ -535,8 +535,51 @@ type VoteAuthorizeReply struct {
 	Receipt   string `json:"receipt"`
 }
 
-type VoteStart struct{}
-type VoteStartReply struct{}
+// VoteOption describes a single vote option.
+type VoteOption struct {
+	ID          string `json:"id"`          // Single, unique word (e.g. yes)
+	Description string `json:"description"` // Longer description of the vote
+	Bit         uint64 `json:"bit"`         // Bit used for this option
+}
+
+// VoteDetails includes all data required by server to start vote on a
+// proposal.
+type VoteDetails struct {
+	Token    string `json:"token"`    // Record token
+	Version  uint32 `json:"version"`  // Record version
+	Type     VoteT  `json:"type"`     // Vote type
+	Mask     uint64 `json:"mask"`     // Valid vote bits
+	Duration uint32 `json:"duration"` // Duration in blocks
+
+	// QuorumPercentage is the percent of elligible votes required for
+	// the vote to meet a quorum.
+	QuorumPercentage uint32 `json:"quorumpercentage"`
+
+	// PassPercentage is the percent of total votes that are required
+	// to consider a vote option as passed.
+	PassPercentage uint32 `json:"passpercentage"`
+
+	Options []VoteOption `json:"options"`
+}
+
+// VoteStart starts a proposal vote.  All proposal votes must be authorized
+// by the proposal author before an admin is able to start the voting process.
+type VoteStart struct {
+	Vote      VoteDetails `json:"vote"`
+	PublicKey string      `json:"publickey"`
+	Signature string      `json:"signature"`
+}
+
+// VoteStartReply is the reply to the VoteStart command.
+//
+// Receipt is the server signature of the client signature. This is proof that
+// the server received and processed the VoteStart command.
+type VoteStartReply struct {
+	StartBlockHeight uint32   `json:"startblockheight"`
+	StartBlockHash   string   `json:"startblockhash"`
+	EndBlockHeight   uint32   `json:"endblockheight"`
+	EligibleTickets  []string `json:"eligibletickets"`
+}
 
 type VoteStartRunoff struct{}
 type VoteStartRunoffReply struct{}
