@@ -1535,6 +1535,16 @@ func convertVoteFromPi(v pi.CommentVoteT) piplugin.VoteT {
 func (p *politeiawww) processCommentVote(cv pi.CommentVote, usr user.User) (*pi.CommentVoteReply, error) {
 	log.Tracef("processCommentVote: %v %v %v", cv.Token, cv.CommentID, cv.Vote)
 
+	// Verify state
+	switch cv.State {
+	case pi.PropStateUnvetted, pi.PropStateVetted:
+		// Allowed; continue
+	default:
+		return nil, pi.UserErrorReply{
+			ErrorCode: pi.ErrorStatusPropStateInvalid,
+		}
+	}
+
 	// Verify user has paid registration paywall
 	if !p.userHasPaid(usr) {
 		return nil, pi.UserErrorReply{
@@ -1658,6 +1668,16 @@ func (p *politeiawww) handleComments(w http.ResponseWriter, r *http.Request) {
 
 func (p *politeiawww) processCommentVotes(cvs pi.CommentVotes) (*pi.CommentVotesReply, error) {
 	log.Tracef("processCommentVotes: %v %v", cvs.Token, cvs.UserID)
+
+	// Verify state
+	switch cvs.State {
+	case pi.PropStateUnvetted, pi.PropStateVetted:
+		// Allowed; continue
+	default:
+		return nil, pi.UserErrorReply{
+			ErrorCode: pi.ErrorStatusPropStateInvalid,
+		}
+	}
 
 	// Call comments plugin to get filtered record's comment votes
 	reply, err := p.commentVotes(comments.Votes{
