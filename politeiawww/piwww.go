@@ -19,7 +19,7 @@ import (
 
 	"github.com/decred/politeia/plugins/comments"
 	piplugin "github.com/decred/politeia/plugins/pi"
-	ticketvote "github.com/decred/politeia/plugins/ticketvote"
+	"github.com/decred/politeia/plugins/ticketvote"
 	pd "github.com/decred/politeia/politeiad/api/v1"
 	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
 	www "github.com/decred/politeia/politeiawww/api/www/v1"
@@ -1646,7 +1646,9 @@ func (p *politeiawww) handleComments(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&c); err != nil {
 		respondWithPiError(w, r, "handleComments: unmarshal",
-			pi.UserErrorReply{})
+			pi.UserErrorReply{
+				ErrorCode: pi.ErrorStatusInvalidInput,
+			})
 		return
 	}
 
@@ -1690,7 +1692,9 @@ func (p *politeiawww) handleCommentVotes(w http.ResponseWriter, r *http.Request)
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&cvs); err != nil {
 		respondWithPiError(w, r, "handleCommentVotes: unmarshal",
-			pi.UserErrorReply{})
+			pi.UserErrorReply{
+				ErrorCode: pi.ErrorStatusInvalidInput,
+			})
 		return
 	}
 
@@ -1745,7 +1749,9 @@ func (p *politeiawww) handleCommentCensor(w http.ResponseWriter, r *http.Request
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&cc); err != nil {
 		respondWithPiError(w, r, "handleCommentCensor: unmarshal",
-			pi.UserErrorReply{})
+			pi.UserErrorReply{
+				ErrorCode: pi.ErrorStatusInvalidInput,
+			})
 		return
 	}
 
@@ -1804,7 +1810,9 @@ func (p *politeiawww) handleVoteAuthorize(w http.ResponseWriter, r *http.Request
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&va); err != nil {
 		respondWithPiError(w, r, "handleVoteAuthorize: unmarshal",
-			pi.UserErrorReply{})
+			pi.UserErrorReply{
+				ErrorCode: pi.ErrorStatusInvalidInput,
+			})
 		return
 	}
 

@@ -62,7 +62,7 @@ func (cmd *VoteAuthorizeCmd) Execute(args []string) error {
 	// Setup authorize vote request
 	sig := cfg.Identity.SignMessage([]byte(token + pdr.Proposal.Version +
 		cmd.Args.Action))
-	va := &pi.VoteAuthorize{
+	va := pi.VoteAuthorize{
 		Action:    action,
 		Token:     token,
 		PublicKey: hex.EncodeToString(cfg.Identity.Public.Key[:]),

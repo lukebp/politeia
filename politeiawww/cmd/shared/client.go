@@ -1258,7 +1258,7 @@ func (c *Client) CommentVotes(cv pi.CommentVotes) (*pi.CommentVotesReply, error)
 
 // CommentVote casts a like comment action (upvote/downvote) for the logged in
 // user.
-func (c *Client) CommentVote(cv *pi.CommentVote) (*pi.CommentVoteReply, error) {
+func (c *Client) CommentVote(cv pi.CommentVote) (*pi.CommentVoteReply, error) {
 	responseBody, err := c.makeRequest(http.MethodPost,
 		pi.APIRoute, pi.RouteCommentVote, cv)
 	if err != nil {
@@ -1282,7 +1282,7 @@ func (c *Client) CommentVote(cv *pi.CommentVote) (*pi.CommentVoteReply, error) {
 }
 
 // CommentCensor censors the specified proposal comment.
-func (c *Client) CommentCensor(cc *pi.CommentCensor) (*pi.CommentCensorReply, error) {
+func (c *Client) CommentCensor(cc pi.CommentCensor) (*pi.CommentCensorReply, error) {
 	responseBody, err := c.makeRequest(http.MethodPost, pi.APIRoute,
 		pi.RouteCommentCensor, cc)
 	if err != nil {
@@ -1583,7 +1583,7 @@ func (c *Client) EditUser(eu *www.EditUser) (*www.EditUserReply, error) {
 
 // VoteAuthorize authorizes the voting period for the specified proposal using
 // the logged in user.
-func (c *Client) VoteAuthorize(va *pi.VoteAuthorize) (*pi.VoteAuthorizeReply, error) {
+func (c *Client) VoteAuthorize(va pi.VoteAuthorize) (*pi.VoteAuthorizeReply, error) {
 	responseBody, err := c.makeRequest(http.MethodPost, pi.APIRoute,
 		pi.RouteVoteAuthorize, va)
 	if err != nil {
