@@ -50,11 +50,11 @@ type piwww struct {
 	ProposalSetStatus ProposalSetStatusCmd `command:"proposalsetstatus"`
 
 	// Comments commands
-	CommentNew       CommentNewCmd       `command:"commentnew" description:"(user)   create a new comment"`
-	CommentVote      CommentVoteCmd      `command:"commentvote" description:"(user)   upvote/downvote a comment"`
-	CommentCensor    CommentCensorCmd    `command:"commentcensor" description:"(admin)  censor a comment"`
-	Comments         CommentsCmd         `command:"comments" description:"(public) get the comments for a proposal"`
-	UserCommentVotes UserCommentVotesCmd `command:"usercommentvotes" description:"(user)   get the logged in user's comment upvotes/downvotes for a proposal"`
+	CommentNew    CommentNewCmd    `command:"commentnew" description:"(user) create a new comment"`
+	CommentVote   CommentVoteCmd   `command:"commentvote" description:"(user) upvote/downvote a comment"`
+	CommentCensor CommentCensorCmd `command:"commentcensor" description:"(admin) censor a comment"`
+	Comments      CommentsCmd      `command:"comments" description:"(public) get the comments for a proposal"`
+	CommentVotes  CommentVotesCmd  `command:"commentvotes" description:"(user) get comment upvotes/downvotes for a proposal from the provided user"`
 
 	// Commands
 	ActiveVotes        ActiveVotesCmd           `command:"activevotes" description:"(public) get the proposals that are being voted on"`

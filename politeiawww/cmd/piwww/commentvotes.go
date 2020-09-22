@@ -11,11 +11,12 @@ import (
 	"github.com/decred/politeia/politeiawww/cmd/shared"
 )
 
-// UserCommentVotesCmd retreives the logged in user's like comment objects for
-// the specified proposal.
-type UserCommentVotesCmd struct {
+// CommentVotesCmd retreives like comment objects for
+// the specified proposal from the provided user.
+type CommentVotesCmd struct {
 	Args struct {
-		Token string `positional-arg-name:"token"` // Censorship token
+		Token  string `positional-arg-name:"token"`  // Censorship token
+		UserID string `positional-arg-name:"userid"` // User id
 	} `positional-args:"true" required:"true"`
 
 	// CLI flags
@@ -24,8 +25,9 @@ type UserCommentVotesCmd struct {
 }
 
 // Execute executes the user comment likes command.
-func (cmd *UserCommentVotesCmd) Execute(args []string) error {
+func (cmd *CommentVotesCmd) Execute(args []string) error {
 	token := cmd.Args.Token
+	userID := cmd.Args.UserID
 
 	// Verify state
 	var state pi.PropStateT
@@ -40,9 +42,10 @@ func (cmd *UserCommentVotesCmd) Execute(args []string) error {
 		return fmt.Errorf("must specify either --vetted or unvetted")
 	}
 
-	cvr, err := client.UserCommentVotes(pi.CommentVotes{
-		Token: token,
-		State: state,
+	cvr, err := client.CommentVotes(pi.CommentVotes{
+		Token:  token,
+		State:  state,
+		UserID: userID,
 	})
 	if err != nil {
 		return err
@@ -50,14 +53,15 @@ func (cmd *UserCommentVotesCmd) Execute(args []string) error {
 	return shared.PrintJSON(cvr)
 }
 
-// userCommentVotesHelpMsg is the output for the help command when
-// 'userlikecomments' is specified.
-const userCommentVotesHelpMsg = `usercommentvotes "token"
+// commentVotesHelpMsg is the output for the help command when
+// 'commentvotes' is specified.
+const commentVotesHelpMsg = `commentvotes "token" "userid"
 
-Get the logged in user's comment upvote/downvotes for a proposal.
+Get the provided user comment upvote/downvotes for a proposal.
 
 Arguments:
 1. token       (string, required)  Proposal censorship token
+2. userid      (string, required)  User id
 
 Flags:
   --vetted     (bool, optional)    Comment on vetted record.
