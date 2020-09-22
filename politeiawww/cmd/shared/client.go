@@ -1243,7 +1243,7 @@ func (c *Client) CommentVotes(cv pi.CommentVotes) (*pi.CommentVotesReply, error)
 	var cvr pi.CommentVotesReply
 	err = json.Unmarshal(responseBody, &cvr)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal UserCommentVotes: %v", err)
+		return nil, fmt.Errorf("unmarshal CommentVotes: %v", err)
 	}
 
 	if c.cfg.Verbose {
