@@ -564,6 +564,9 @@ type VoteDetails struct {
 
 // VoteStart starts a proposal vote.  All proposal votes must be authorized
 // by the proposal author before an admin is able to start the voting process.
+//
+// Signature is the signature of a SHA256 digest of the JSON
+// encoded Vote structure.
 type VoteStart struct {
 	Vote      VoteDetails `json:"vote"`
 	PublicKey string      `json:"publickey"`
