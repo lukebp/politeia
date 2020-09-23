@@ -2011,12 +2011,13 @@ func (p *politeiawww) processVoteBallot(vb pi.VoteBallot) (*pi.VoteBallotReply, 
 	// Translate reply
 	var vbr pi.VoteBallotReply
 	vrs := make([]pi.CastVoteReply, 0, len(reply.Receipts))
-	for _, vr := range reply.Receipts {
+	for i, vr := range reply.Receipts {
 		vrs = append(vrs, pi.CastVoteReply{
-			Ticket:       vr.Ticket,
-			Receipt:      vr.Receipt,
-			ErrorCode:    convertPiVoteErrorFromTicketVote(vr.ErrorCode),
-			ErrorContext: vr.ErrorContext,
+			Ticket:          vr.Ticket,
+			Receipt:         vr.Receipt,
+			ErrorCode:       convertPiVoteErrorFromTicketVote(vr.ErrorCode),
+			ErrorContext:    vr.ErrorContext,
+			ClientSignature: vb.Votes[i].Signature,
 		})
 	}
 	vbr.Receipts = vrs

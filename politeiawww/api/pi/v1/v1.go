@@ -686,8 +686,9 @@ type CastVote struct {
 
 // CastVoteReply contains the receipt for the cast vote.
 type CastVoteReply struct {
-	Ticket  string `json:"ticket"`  // Ticket ID
-	Receipt string `json:"receipt"` // Server signature of client signature
+	Ticket          string `json:"ticket"`    // Ticket ID
+	Receipt         string `json:"receipt"`   // Server signature of client signature
+	ClientSignature string `json:"signature"` // Original client signature
 
 	// The follwing fields will only be present if an error occured
 	// while attempting to cast the vote.
