@@ -93,7 +93,7 @@ func (p *politeiawww) voteAuthorize(a ticketvote.Authorize) (*ticketvote.Authori
 func (p *politeiawww) voteDetails(token string) (*ticketvote.DetailsReply, error) {
 	// Prep vote details payload
 	vdp := ticketvote.Details{
-		Token: token,
+		Tokens: []string{token},
 	}
 	payload, err := ticketvote.EncodeDetails(vdp)
 	if err != nil {
