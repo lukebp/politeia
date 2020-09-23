@@ -279,7 +279,7 @@ func (p *politeiawww) processVoteResults(token string) (*www.VoteResultsReply, e
 	log.Tracef("processVoteResults: %v", token)
 
 	// Call ticketvote plugin
-	vd, err := p.voteDetails(token)
+	vd, err := p.voteDetails([]string{token})
 	if err != nil {
 		return nil, err
 	}

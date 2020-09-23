@@ -90,10 +90,10 @@ func (p *politeiawww) voteAuthorize(a ticketvote.Authorize) (*ticketvote.Authori
 }
 
 // voteDetails calls the ticketvote plugin command to get vote details.
-func (p *politeiawww) voteDetails(token string) (*ticketvote.DetailsReply, error) {
+func (p *politeiawww) voteDetails(tokens []string) (*ticketvote.DetailsReply, error) {
 	// Prep vote details payload
 	vdp := ticketvote.Details{
-		Tokens: []string{token},
+		Tokens: tokens,
 	}
 	payload, err := ticketvote.EncodeDetails(vdp)
 	if err != nil {

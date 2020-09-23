@@ -161,7 +161,7 @@ const (
 	ErrorStatusBallotInvalid
 	ErrorStatusVotePageSizeExceeded
 
-	// Vote cast errors
+	// Cast vote errors
 	VoteErrorInvalid             VoteErrorT = 0
 	VoteErrorInternalError       VoteErrorT = 1
 	VoteErrorTokenInvalid        VoteErrorT = 2
@@ -588,7 +588,7 @@ type VoteDetails struct {
 
 // CastVoteDetails contains the details of a cast vote.
 type CastVoteDetails struct {
-	Token     string `json:"token"`     // Record token
+	Token     string `json:"token"`     // Proposal token
 	Ticket    string `json:"ticket"`    // Ticket hash
 	VoteBit   string `json:"votebits"`  // Selected vote bit, hex encoded
 	Signature string `json:"signature"` // Signature of Token+Ticket+VoteBit
