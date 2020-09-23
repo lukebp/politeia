@@ -289,8 +289,8 @@ func (p *politeiawww) processVoteResults(token string) (*www.VoteResultsReply, e
 	endHeight := strconv.FormatUint(uint64(vd.Vote.EndBlockHeight), 10)
 	res := www.VoteResultsReply{
 		StartVote: www.StartVote{
-			PublicKey: vd.Vote.PublicKey,
-			Signature: vd.Vote.Signature,
+			PublicKey: vd.StartDetails.PublicKey,
+			Signature: vd.StartDetails.Signature,
 			Vote: www.Vote{
 				Token:            vd.Vote.Params.Token,
 				Mask:             vd.Vote.Params.Mask,
