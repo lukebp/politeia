@@ -201,8 +201,9 @@ func (cmd *VoteCmd) Execute(args []string) error {
 			continue
 		}
 
-		if !serverID.VerifyMessage([]byte(v.ClientSignature), *sig) {
-			v.ErrorContext = "Could not verify receipt " + v.ClientSignature
+		clientSig := votes[i].Signature
+		if !serverID.VerifyMessage([]byte(clientSig), *sig) {
+			v.ErrorContext = "Could not verify receipt " + clientSig
 			failedReceipts = append(failedReceipts, v)
 			failedTickets = append(failedTickets, h)
 		}
