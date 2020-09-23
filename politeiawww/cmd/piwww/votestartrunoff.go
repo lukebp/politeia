@@ -171,7 +171,7 @@ func (cmd *VoteStartRunoffCmd) Execute(args []string) error {
 }
 
 // voteStartRunoffHelpMsg is the help command output for 'votestartrunoff'.
-var voteStartRunoffHelpMsg = `startvoterunoff <token> <duration> <quorumpercentage> <passpercentage>
+var voteStartRunoffHelpMsg = `votestartrunoff <token> <duration> <quorumpercentage> <passpercentage>
 
 Start the voting period on all public submissions to an RFP proposal. The
 optional arguments must either all be used or none be used.
