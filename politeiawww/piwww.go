@@ -1864,7 +1864,7 @@ func convertVoteParamsFromPi(v pi.VoteParams) ticketvote.VoteParams {
 
 func convertVoteStartFromPi(vs pi.VoteStart) ticketvote.Start {
 	return ticketvote.Start{
-		Vote:      convertVoteDetailsFromPi(vs.Vote),
+		Params:    convertVoteParamsFromPi(vs.Params),
 		PublicKey: vs.PublicKey,
 		Signature: vs.Signature,
 	}
@@ -1874,11 +1874,7 @@ func (p *politeiawww) processVoteStart(vs pi.VoteStart) (*pi.VoteStartReply, err
 	log.Tracef("processVoteStart: %v", vs.Params.Token)
 
 	// Call the ticketvote plugin to start vote
-	reply, err := p.voteStart(ticketvote.Start{
-		Params:    convertVoteParamsFromPi(vs.Params),
-		PublicKey: vs.PublicKey,
-		Signature: vs.Signature,
-	})
+	reply, err := p.voteStart(convertVoteStartFromPi(vs))
 	if err != nil {
 		return nil, err
 	}
@@ -1926,7 +1922,7 @@ func (p *politeiawww) processVoteStartRunoff(cvr pi.VoteStartRunoff) (*pi.VoteSt
 	for _, auth := range cvr.Authorizations {
 		auths = append(auths, convertVoteAuthorizeFromPi(auth))
 	}
-	pcvr.Authorizations = auths
+	pcvr.Auths = auths
 	// Transate submissions' vote start structs
 	starts := make([]ticketvote.Start, 0, len(cvr.Starts))
 	for _, s := range cvr.Starts {

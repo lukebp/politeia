@@ -107,7 +107,7 @@ func (cmd *VoteStartRunoffCmd) Execute(args []string) error {
 			return err
 		}
 
-		vote := pi.VoteDetails{
+		vote := pi.VoteParams{
 			Token:            v.CensorshipRecord.Token,
 			Version:          uint32(version),
 			Type:             pi.VoteTypeRunoff,
@@ -136,7 +136,7 @@ func (cmd *VoteStartRunoffCmd) Execute(args []string) error {
 		sig := cfg.Identity.SignMessage([]byte(msg))
 
 		starts = append(starts, pi.VoteStart{
-			Vote:      vote,
+			Params:    vote,
 			PublicKey: hex.EncodeToString(cfg.Identity.Public.Key[:]),
 			Signature: hex.EncodeToString(sig[:]),
 		})
