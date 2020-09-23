@@ -247,6 +247,27 @@ func convertPiErrorStatusFromTicketVote(e ticketvote.ErrorStatusT) pi.ErrorStatu
 	return pi.ErrorStatusInvalid
 }
 
+func convertPiVoteErrorFromTicketVote(e ticketvote.VoteErrorT) pi.VoteErrorT {
+	switch e {
+	case ticketvote.VoteErrorInvalid:
+		return pi.VoteErrorInvalid
+	case ticketvote.VoteErrorInternalError:
+		return pi.VoteErrorInternalError
+	case ticketvote.VoteErrorRecordNotFound:
+		return pi.VoteErrorRecordNotFound
+	case ticketvote.VoteErrorVoteBitInvalid:
+		return pi.VoteErrorVoteBitInvalid
+	case ticketvote.VoteErrorVoteStatusInvalid:
+		return pi.VoteErrorVoteStatusInvalid
+	case ticketvote.VoteErrorTicketAlreadyVoted:
+		return pi.VoteErrorTicketAlreadyVoted
+	case ticketvote.VoteErrorTicketNotEligible:
+		return pi.VoteErrorTicketNotEligible
+	default:
+		return pi.VoteErrorInternalError
+	}
+}
+
 // convertPiErrorStatus attempts to convert the provided politeiad plugin ID
 // and error code into a pi ErrorStatusT. If a plugin ID is provided the error
 // code is assumed to be a user error code from the specified plugin API.  If

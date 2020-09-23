@@ -9,6 +9,26 @@ import (
 	www "github.com/decred/politeia/politeiawww/api/www/v1"
 )
 
+func (p *politeiawww) voteBallot(vb ticketvote.Ballot) (*ticketvote.BallotReply, error) {
+	// Prep plugin command
+	payload, err := ticketvote.EncodeBallot(vb)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := p.pluginCommand(ticketvote.ID, ticketvote.CmdBallot, "",
+		string(payload))
+	if err != nil {
+		return nil, err
+	}
+	vbr, err := ticketvote.DecodeBallotReply([]byte(r))
+	if err != nil {
+		return nil, err
+	}
+
+	return vbr, nil
+}
+
 func (p *politeiawww) voteStartRunoff(vsr ticketvote.StartRunoff) (*ticketvote.StartRunoffReply, error) {
 	// Prep plugin command
 	payload, err := ticketvote.EncodeStartRunoff(vsr)
