@@ -678,7 +678,7 @@ type VoteStartRunoffReply struct {
 
 // CastVote is a signed ticket vote.
 type CastVote struct {
-	Token     string `json:"token"`     // Record token
+	Token     string `json:"token"`     // Proposal token
 	Ticket    string `json:"ticket"`    // Ticket ID
 	VoteBit   string `json:"votebits"`  // Selected vote bit, hex encoded
 	Signature string `json:"signature"` // Signature of Token+Ticket+VoteBit
