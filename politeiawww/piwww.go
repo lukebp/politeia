@@ -1965,6 +1965,27 @@ func (p *politeiawww) handleVoteStartRunoff(w http.ResponseWriter, r *http.Reque
 	util.RespondWithJSON(w, http.StatusOK, vsrr)
 }
 
+func convertPiVoteErrorFromTicketVote(e ticketvote.VoteErrorT) pi.VoteErrorT {
+	switch e {
+	case ticketvote.VoteErrorInvalid:
+		return pi.VoteErrorInvalid
+	case ticketvote.VoteErrorInternalError:
+		return pi.VoteErrorInternalError
+	case ticketvote.VoteErrorRecordNotFound:
+		return pi.VoteErrorRecordNotFound
+	case ticketvote.VoteErrorVoteBitInvalid:
+		return pi.VoteErrorVoteBitInvalid
+	case ticketvote.VoteErrorVoteStatusInvalid:
+		return pi.VoteErrorVoteStatusInvalid
+	case ticketvote.VoteErrorTicketAlreadyVoted:
+		return pi.VoteErrorTicketAlreadyVoted
+	case ticketvote.VoteErrorTicketNotEligible:
+		return pi.VoteErrorTicketNotEligible
+	default:
+		return pi.VoteErrorInternalError
+	}
+}
+
 func (p *politeiawww) processVoteBallot(vb pi.VoteBallot) (*pi.VoteBallotReply, error) {
 	log.Tracef("processVoteBallot")
 
