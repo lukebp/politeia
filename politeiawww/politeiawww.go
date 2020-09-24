@@ -303,7 +303,7 @@ func (p *politeiawww) handleCastVotes(w http.ResponseWriter, r *http.Request) {
 
 // handleVoteResultsWWW returns a proposal + all voting action.
 func (p *politeiawww) handleVoteResultsWWW(w http.ResponseWriter, r *http.Request) {
-	log.Tracef("handleVoteResults")
+	log.Tracef("handleVoteResultsWWW")
 
 	pathParams := mux.Vars(r)
 	token := pathParams["token"]
@@ -311,7 +311,7 @@ func (p *politeiawww) handleVoteResultsWWW(w http.ResponseWriter, r *http.Reques
 	vrr, err := p.processVoteResultsWWW(token)
 	if err != nil {
 		RespondWithError(w, r, 0,
-			"handleVoteResults: processVoteResults %v",
+			"handleVoteResultsWWW: processVoteResultsWWW %v",
 			err)
 		return
 	}
