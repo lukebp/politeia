@@ -133,8 +133,6 @@ func (cmd *HelpCmd) Execute(args []string) error {
 	// politeiavoter mock commands
 	case "inventory":
 		fmt.Printf("%s\n", inventoryHelpMsg)
-	case "tally":
-		fmt.Printf("%s\n", tallyHelpMsg)
 	case "vote":
 		fmt.Printf("%s\n", voteHelpMsg)
 

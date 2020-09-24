@@ -301,14 +301,14 @@ func (p *politeiawww) handleCastVotes(w http.ResponseWriter, r *http.Request) {
 	util.RespondWithJSON(w, http.StatusOK, avr)
 }
 
-// handleVoteResults returns a proposal + all voting action.
-func (p *politeiawww) handleVoteResults(w http.ResponseWriter, r *http.Request) {
+// handleVoteResultsWWW returns a proposal + all voting action.
+func (p *politeiawww) handleVoteResultsWWW(w http.ResponseWriter, r *http.Request) {
 	log.Tracef("handleVoteResults")
 
 	pathParams := mux.Vars(r)
 	token := pathParams["token"]
 
-	vrr, err := p.processVoteResults(token)
+	vrr, err := p.processVoteResultsWWW(token)
 	if err != nil {
 		RespondWithError(w, r, 0,
 			"handleVoteResults: processVoteResults %v",
@@ -660,7 +660,7 @@ func (p *politeiawww) setPoliteiaWWWRoutes() {
 		www.RouteCastVotes, p.handleCastVotes,
 		permissionPublic)
 	p.addRoute(http.MethodGet, www.PoliteiaWWWAPIRoute,
-		www.RouteVoteResults, p.handleVoteResults,
+		www.RouteVoteResults, p.handleVoteResultsWWW,
 		permissionPublic)
 	p.addRoute(http.MethodPost, www.PoliteiaWWWAPIRoute,
 		www.RouteBatchVoteSummary, p.handleBatchVoteSummary,
