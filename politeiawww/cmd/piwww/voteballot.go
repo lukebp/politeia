@@ -15,7 +15,6 @@ import (
 	"github.com/decred/dcrwallet/rpc/walletrpc"
 	"github.com/decred/politeia/politeiad/api/v1/identity"
 	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
-	v1 "github.com/decred/politeia/politeiawww/api/www/v1"
 	"github.com/decred/politeia/util"
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -51,42 +50,38 @@ func (cmd *VoteBallotCmd) Execute(args []string) error {
 		return err
 	}
 
-	// Get all active proposal votes
-	avr, err := client.ActiveVotes()
+	// Get vote details of provided proposal
+	avr, err := client.Votes(pi.Votes{
+		Tokens: []string{token},
+	})
 	if err != nil {
-		return fmt.Errorf("ActiveVotes: %v", err)
+		return fmt.Errorf("Votes: %v", err)
 	}
 
 	// Find the proposal that the user wants to vote on
-	var pvt v1.ProposalVoteTuple
-	for _, v := range avr.Votes {
-		if token == v.Proposal.CensorshipRecord.Token {
-			pvt = v
-			break
-		}
-	}
+	pvt, ok := avr.Votes[token]
 
-	if pvt.Proposal.Name == "" {
+	if !ok {
 		return fmt.Errorf("proposal not found: %v", token)
 	}
 
 	// Ensure that the passed in voteID is one of the
 	// proposal's voting options and save the vote bits
-	var voteBits string
-	for _, option := range pvt.StartVote.Vote.Options {
-		if voteID == option.Id {
-			voteBits = strconv.FormatUint(option.Bits, 16)
+	var voteBit string
+	for _, option := range pvt.Vote.Params.Options {
+		if voteID == option.ID {
+			voteBit = strconv.FormatUint(option.Bit, 16)
 			break
 		}
 	}
 
-	if voteBits == "" {
+	if voteBit == "" {
 		return fmt.Errorf("vote id not found: %v", voteID)
 	}
 
 	// Find user's tickets that are eligible to vote on this
 	// proposal
-	ticketPool, err := convertTicketHashes(pvt.StartVoteReply.EligibleTickets)
+	ticketPool, err := convertTicketHashes(pvt.Vote.EligibleTickets)
 	if err != nil {
 		return err
 	}
@@ -101,7 +96,7 @@ func (cmd *VoteBallotCmd) Execute(args []string) error {
 
 	if len(ctr.TicketAddresses) == 0 {
 		return fmt.Errorf("user has no eligible tickets: %v",
-			pvt.StartVote.Vote.Token)
+			token)
 	}
 
 	// Create slice of hexadecimal ticket hashes to represent
@@ -132,7 +127,7 @@ func (cmd *VoteBallotCmd) Execute(args []string) error {
 		len(eligibleTickets))
 	for i, v := range ctr.TicketAddresses {
 		// ctr.TicketAddresses and eligibleTickets use the same index
-		msg := token + eligibleTickets[i] + voteBits
+		msg := token + eligibleTickets[i] + voteBit
 		messages = append(messages, &walletrpc.SignMessagesRequest_Message{
 			Address: v.Address,
 			Message: msg,
@@ -161,7 +156,7 @@ func (cmd *VoteBallotCmd) Execute(args []string) error {
 		votes = append(votes, pi.CastVote{
 			Token:     token,
 			Ticket:    ticket,
-			VoteBit:   voteBits,
+			VoteBit:   voteBit,
 			Signature: hex.EncodeToString(sigs.Replies[i].Signature),
 		})
 	}
