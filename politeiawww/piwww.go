@@ -1556,7 +1556,7 @@ func (p *politeiawww) processCommentVote(cv pi.CommentVote, usr user.User) (*pi.
 		}
 	}
 
-	// Call the pi plugin to add new comment
+	// Call the pi plugin to vote on a comment
 	reply, err := p.commentVotePi(piplugin.CommentVote{
 		UserID:    usr.ID.String(),
 		Token:     cv.Token,
