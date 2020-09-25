@@ -60,7 +60,6 @@ func (cmd *VoteBallotCmd) Execute(args []string) error {
 
 	// Find the proposal that the user wants to vote on
 	pvt, ok := avr.Votes[token]
-
 	if !ok {
 		return fmt.Errorf("proposal not found: %v", token)
 	}
