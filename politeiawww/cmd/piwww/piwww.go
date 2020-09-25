@@ -65,9 +65,7 @@ type piwww struct {
 	VoteResults     VoteResultsCmd     `command:"voteresults" description:"(public) get vote results for a proposal"`
 	VoteSummaries   VoteSummariesCmd   `command:"votesummaries" description:"(public) retrieve the vote summary for a set of proposals"`
 	VoteInventory   VoteInventoryCmd   `command:"voteinventory" description:"(public) retrieve the tokens of all public, non-abandoned proposal separated by vote status"`
-
-	// XXX will go
-	Vote VoteCmd `command:"vote" description:"(public) cast votes for a proposal"`
+	VoteBallot      VoteBallotCmd      `command:"voteballot" description:"(public) cast ballot of votes for a proposal"`
 
 	// Commands
 	ActiveVotes        ActiveVotesCmd           `command:"activevotes" description:"(public) get the proposals that are being voted on"`

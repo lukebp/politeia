@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2019 The Decred developers
+// Copyright (c) 2017-2020 The Decred developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -20,16 +20,16 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-// VoteCmd casts a proposal ballot for the specified proposal.
-type VoteCmd struct {
+// VoteBallotCmd casts a votes ballot for the specified proposal.
+type VoteBallotCmd struct {
 	Args struct {
 		Token  string `positional-arg-name:"token"`  // Censorship token
 		VoteID string `positional-arg-name:"voteid"` // Vote choice ID
 	} `positional-args:"true" required:"true"`
 }
 
-// Execute executes the vote command.
-func (cmd *VoteCmd) Execute(args []string) error {
+// Execute executes the vote ballot command.
+func (cmd *VoteBallotCmd) Execute(args []string) error {
 	token := cmd.Args.Token
 	voteID := cmd.Args.VoteID
 
@@ -171,7 +171,7 @@ func (cmd *VoteCmd) Execute(args []string) error {
 		Votes: votes,
 	})
 	if err != nil {
-		return fmt.Errorf("CastVotes: %v", err)
+		return fmt.Errorf("VoteBallot: %v", err)
 	}
 
 	// Check for any failed votes. Vote receipts don't include
@@ -221,8 +221,9 @@ func (cmd *VoteCmd) Execute(args []string) error {
 	return nil
 }
 
-// voteHelpMsg is the output of the help command when 'vote' is specified.
-const voteHelpMsg = `vote "token" "voteid"
+// voteBallotHelpMsg is the output of the help command when 'voteballot'
+// is specified.
+const voteBallotHelpMsg = `voteballot "token" "voteid"
 
 Cast ticket votes for a proposal.
 
