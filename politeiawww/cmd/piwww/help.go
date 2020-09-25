@@ -111,8 +111,6 @@ func (cmd *HelpCmd) Execute(args []string) error {
 		fmt.Printf("%s\n", votesHelpMsg)
 	case "voteresults":
 		fmt.Printf("%s\n", voteResultsHelpMsg)
-	case "activevotes":
-		fmt.Printf("%s\n", activeVotesHelpMsg)
 	case "votestatus":
 		fmt.Printf("%s\n", voteStatusHelpMsg)
 	case "votestatuses":

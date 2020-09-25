@@ -68,7 +68,6 @@ type piwww struct {
 	VoteBallot      VoteBallotCmd      `command:"voteballot" description:"(public) cast ballot of votes for a proposal"`
 
 	// Commands
-	ActiveVotes        ActiveVotesCmd           `command:"activevotes" description:"(public) get the proposals that are being voted on"`
 	BatchProposals     shared.BatchProposalsCmd `command:"batchproposals" description:"(user)   retrieve a set of proposals"`
 	ChangePassword     shared.ChangePasswordCmd `command:"changepassword" description:"(user)   change the password for the logged in user"`
 	ChangeUsername     shared.ChangeUsernameCmd `command:"changeusername" description:"(user)   change the username for the logged in user"`
