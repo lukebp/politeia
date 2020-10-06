@@ -373,7 +373,10 @@ func (cmd *testRunCmd) Execute(args []string) error {
 	}
 
 	// Logout admin
-	logout()
+	err = logout()
+	if err != nil {
+		return err
+	}
 
 	// Test user routes
 	err = testUserRoutes(int(policy.MinPasswordLength))
