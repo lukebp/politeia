@@ -183,6 +183,9 @@ func testUserRoutes(minPasswordLength int) error {
 	// be true once the payment tx has the required number
 	// of confirmations.
 	upvr, err := userPaymentVerify()
+	if err != nil {
+		return err
+	}
 	for !upvr.HasPaid {
 		upvr, err = userPaymentVerify()
 		if err != nil {
