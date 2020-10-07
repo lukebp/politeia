@@ -292,12 +292,12 @@ type CommentNewReply struct {
 	Receipt   string `json:"receipt"`   // Server sig of client sig
 }
 
-// EncodeCommentNew encodes a CommentNewReply into a JSON byte slice.
+// EncodeCommentNewReply encodes a CommentNewReply into a JSON byte slice.
 func EncodeCommentNewReply(cnr CommentNewReply) ([]byte, error) {
 	return json.Marshal(cnr)
 }
 
-// DecodeCommentNew decodes a JSON byte slice into a CommentNewReply.
+// DecodeCommentNewReply decodes a JSON byte slice into a CommentNewReply.
 func DecodeCommentNewReply(payload []byte) (*CommentNewReply, error) {
 	var cnr CommentNewReply
 	err := json.Unmarshal(payload, &cnr)
