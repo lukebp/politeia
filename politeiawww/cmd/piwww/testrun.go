@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/decred/politeia/politeiad/api/v1/identity"
 	v1 "github.com/decred/politeia/politeiawww/api/www/v1"
 	"github.com/decred/politeia/politeiawww/cmd/shared"
 	"github.com/decred/politeia/util"
@@ -52,12 +53,12 @@ func logout() error {
 }
 
 // userPaymentVerify ensures current logged in user has paid registration fee
-func userPaymentVerify() (v1.UserRegistrationPaymentReply, error) {
-	upvr, err := client.UserPaymentVerify()
+func userRegistrationPayment() (v1.UserRegistrationPaymentReply, error) {
+	urvr, err := client.UserRegistrationPayment()
 	if err != nil {
 		return v1.UserRegistrationPaymentReply{}, err
 	}
-	return *upvr, nil
+	return *urvr, nil
 }
 
 // randomString generates a random string
@@ -69,17 +70,38 @@ func randomString(length int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// userNew creates new user
-func userNew(email, password, username string) error {
+// userNew creates a new user and returnes user's public key.
+func userNew(email, password, username string) (*identity.FullIdentity, error) {
 	fmt.Printf("Creating user: %v\n", email)
 
-	unc := userNewCmd{
-		Verify: true,
+	// Create user identity and save it to disk
+	id, err := shared.NewIdentity()
+	if err != nil {
+		return nil, err
 	}
-	unc.Args.Email = email
-	unc.Args.Username = username
-	unc.Args.Password = password
-	err := unc.Execute(nil)
+
+	// Setup new user request
+	nu := &v1.NewUser{
+		Email:     email,
+		Username:  username,
+		Password:  shared.DigestSHA3(password),
+		PublicKey: hex.EncodeToString(id.Public.Key[:]),
+	}
+	_, err = client.NewUser(nu)
+	if err != nil {
+		return nil, err
+	}
+
+	return id, nil
+}
+
+// userManage sends a usermanage command
+func userManage(userID, action, reason string) error {
+	muc := shared.UserManageCmd{}
+	muc.Args.UserID = userID
+	muc.Args.Action = action
+	muc.Args.Reason = reason
+	err := muc.Execute(nil)
 	if err != nil {
 		return err
 	}
@@ -87,7 +109,7 @@ func userNew(email, password, username string) error {
 }
 
 // testUser tests piwww user specific routes.
-func testUserRoutes(minPasswordLength int) error {
+func testUserRoutes(admin testUser, minPasswordLength int) error {
 	// sleepInterval is the time to wait in between requests
 	// when polling politeiawww for paywall tx confirmations
 	// or RFP vote results.
@@ -116,7 +138,31 @@ func testUserRoutes(minPasswordLength int) error {
 	email := randomStr + "@example.com"
 	username := randomStr
 	password := randomStr
-	err = userNew(email, password, username)
+	id, err := userNew(email, password, username)
+	if err != nil {
+		return err
+	}
+
+	// Resed email verification
+	fmt.Printf("Resend email Verification\n")
+	rvr, err := client.ResendVerification(v1.ResendVerification{
+		PublicKey: hex.EncodeToString(id.Public.Key[:]),
+		Email:     email,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Verify email
+	fmt.Printf("Verify user's email\n")
+	vt := rvr.VerificationToken
+	sig := id.SignMessage([]byte(vt))
+	_, err = client.VerifyNewUser(
+		&v1.VerifyNewUser{
+			Email:             email,
+			VerificationToken: vt,
+			Signature:         hex.EncodeToString(sig[:]),
+		})
 	if err != nil {
 		return err
 	}
@@ -182,12 +228,12 @@ func testUserRoutes(minPasswordLength int) error {
 	// as true. If the paywall has been enabled this will
 	// be true once the payment tx has the required number
 	// of confirmations.
-	upvr, err := userPaymentVerify()
+	upvr, err := userRegistrationPayment()
 	if err != nil {
 		return err
 	}
 	for !upvr.HasPaid {
-		upvr, err = userPaymentVerify()
+		upvr, err = userRegistrationPayment()
 		if err != nil {
 			return err
 		}
@@ -206,10 +252,10 @@ func testUserRoutes(minPasswordLength int) error {
 	if paywallEnabled {
 		// New proposal failure - no proposal credits
 		fmt.Printf("  New proposal failure: no proposal credits\n")
-		npc := proposalNewCmd{
+		pnc := proposalNewCmd{
 			Random: true,
 		}
-		err = npc.Execute(nil)
+		err = pnc.Execute(nil)
 		if err == nil {
 			return fmt.Errorf("submited proposal without " +
 				"purchasing any proposal credits")
@@ -232,7 +278,7 @@ func testUserRoutes(minPasswordLength int) error {
 	// Keep track of when the pending proposal credit payment
 	// receives the required number of confirmations.
 	for {
-		pppr, err := client.ProposalPaywallPayment()
+		pppr, err := client.UserProposalPaywallTx()
 		if err != nil {
 			return err
 		}
@@ -302,8 +348,30 @@ func testUserRoutes(minPasswordLength int) error {
 
 	// Update user key
 	fmt.Printf("  Update user key\n")
-	var uukc shared.UserKeyUpdateCmd
-	err = uukc.Execute(nil)
+	var ukuc shared.UserKeyUpdateCmd
+	err = ukuc.Execute(nil)
+	if err != nil {
+		return err
+	}
+
+	// Login admin
+	err = login(admin)
+	if err != nil {
+		return err
+	}
+
+	// Deactivate user
+	fmt.Printf("  Deactivate user\n")
+	const userDeactivateAction = "deactivate"
+	err = userManage(user.ID, userDeactivateAction, "testing")
+	if err != nil {
+		return err
+	}
+
+	// Reactivate user
+	fmt.Printf("  Reactivate user\n")
+	const userReactivateAction = "reactivate"
+	err = userManage(user.ID, userReactivateAction, "testing")
 	if err != nil {
 		return err
 	}
@@ -364,11 +432,11 @@ func (cmd *testRunCmd) Execute(args []string) error {
 	}
 
 	// Ensure admin paid registration free
-	upvr, err := userPaymentVerify()
+	urpr, err := userRegistrationPayment()
 	if err != nil {
 		return err
 	}
-	if !upvr.HasPaid {
+	if !urpr.HasPaid {
 		return fmt.Errorf("admin has not paid registration fee")
 	}
 
@@ -379,7 +447,7 @@ func (cmd *testRunCmd) Execute(args []string) error {
 	}
 
 	// Test user routes
-	err = testUserRoutes(int(policy.MinPasswordLength))
+	err = testUserRoutes(admin, int(policy.MinPasswordLength))
 	if err != nil {
 		return err
 	}
