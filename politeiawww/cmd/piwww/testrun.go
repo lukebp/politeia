@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/hex"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/decred/politeia/decredplugin"
 	"github.com/decred/politeia/politeiad/api/v1/identity"
 	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
 	www "github.com/decred/politeia/politeiawww/api/www/v1"
@@ -182,7 +184,7 @@ func testUserRoutes(admin testUser) error {
 	// Create new user
 	user, id, _, err := userCreate()
 	if err != nil {
-		return err
+		return testUser{}, err
 	}
 
 	// Resed email verification
@@ -208,7 +210,7 @@ func testUserRoutes(admin testUser) error {
 		Password: shared.DigestSHA3(user.Password),
 	})
 	if err != nil {
-		return err
+		return testUser{}, err
 	}
 
 	user.PublicKey = lr.PublicKey
@@ -317,7 +319,7 @@ func testUserRoutes(admin testUser) error {
 		txID, err := util.PayWithTestnetFaucet(context.Background(),
 			cfg.FaucetHost, user.PaywallAddress, user.PaywallAmount, "")
 		if err != nil {
-			return err
+			return testUser{}, err
 		}
 
 		dcr := float64(user.PaywallAmount) / 1e8
@@ -332,12 +334,12 @@ func testUserRoutes(admin testUser) error {
 	// of confirmations.
 	upvr, err := userRegistrationPayment()
 	if err != nil {
-		return err
+		return testUser{}, err
 	}
 	for !upvr.HasPaid {
 		upvr, err = userRegistrationPayment()
 		if err != nil {
-			return err
+			return testUser{}, err
 		}
 
 		fmt.Printf("  Verify user payment: waiting for tx confirmations...\n")
@@ -348,7 +350,7 @@ func testUserRoutes(admin testUser) error {
 	fmt.Printf("  User proposal paywall\n")
 	ppdr, err := client.UserProposalPaywall()
 	if err != nil {
-		return err
+		return testUser{}, err
 	}
 
 	if paywallEnabled {
@@ -359,7 +361,7 @@ func testUserRoutes(admin testUser) error {
 		txID, err := util.PayWithTestnetFaucet(context.Background(),
 			cfg.FaucetHost, ppdr.PaywallAddress, atoms, "")
 		if err != nil {
-			return err
+			return testUser{}, err
 		}
 
 		fmt.Printf("  Paid %v DCR to %v with txID %v\n",
@@ -371,7 +373,7 @@ func testUserRoutes(admin testUser) error {
 	for {
 		pppr, err := client.UserProposalPaywallTx()
 		if err != nil {
-			return err
+			return testUser{}, err
 		}
 
 		// TxID will be blank if the paywall has been disabled
@@ -381,7 +383,7 @@ func testUserRoutes(admin testUser) error {
 			// have been added to the user's account.
 			upcr, err := client.UserProposalCredits()
 			if err != nil {
-				return err
+				return testUser{}, err
 			}
 
 			if !paywallEnabled || len(upcr.UnspentCredits) == numCredits {
@@ -399,7 +401,7 @@ func testUserRoutes(admin testUser) error {
 		Username: user.Username,
 	})
 	if err != nil {
-		return err
+		return testUser{}, err
 	}
 	if usersr.TotalMatches != 1 {
 		return fmt.Errorf("Wrong matching users: want %v, got %v", 1,
@@ -412,7 +414,7 @@ func testUserRoutes(admin testUser) error {
 		PublicKey: user.PublicKey,
 	})
 	if err != nil {
-		return err
+		return testUser{}, err
 	}
 	if usersr.TotalMatches != 1 {
 		return fmt.Errorf("Wrong matching users: want %v, got %v", 1,
@@ -425,14 +427,14 @@ func testUserRoutes(admin testUser) error {
 	udc.Args.UserID = user.ID
 	err = udc.Execute(nil)
 	if err != nil {
-		return err
+		return testUser{}, err
 	}
 
 	// Login admin
 	fmt.Printf("  Login as admin\n")
 	err = login(admin)
 	if err != nil {
-		return err
+		return testUser{}, err
 	}
 
 	// Rescan user credits
@@ -441,7 +443,7 @@ func testUserRoutes(admin testUser) error {
 	upayrc.Args.UserID = user.ID
 	err = upayrc.Execute(nil)
 	if err != nil {
-		return err
+		return testUser{}, err
 	}
 
 	// Deactivate user
@@ -449,7 +451,7 @@ func testUserRoutes(admin testUser) error {
 	const userDeactivateAction = "deactivate"
 	err = userManage(user.ID, userDeactivateAction, "testing")
 	if err != nil {
-		return err
+		return testUser{}, err
 	}
 
 	// Reactivate user
