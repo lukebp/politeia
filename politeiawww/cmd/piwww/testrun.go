@@ -346,16 +346,85 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		return err
 	}
 
+	// Reset user password
+	fmt.Printf("  Reset user password\n")
+	// Generate new random password
+	randomStr, err = randomString(minPasswordLength)
+	if err != nil {
+		return err
+	}
+	uprc := shared.UserPasswordResetCmd{}
+	uprc.Args.Email = user.Email
+	uprc.Args.Username = user.Username
+	uprc.Args.NewPassword = randomStr
+	err = uprc.Execute(nil)
+	if err != nil {
+		return err
+	}
+	user.Password = randomStr
+
+	// Login with new password
+	err = login(user)
+
 	// Update user key
 	fmt.Printf("  Update user key\n")
-	var ukuc shared.UserKeyUpdateCmd
+	ukuc := shared.UserKeyUpdateCmd{}
 	err = ukuc.Execute(nil)
 	if err != nil {
 		return err
 	}
 
+	// Fetch user by usernam
+	fmt.Printf("  Fetch user by username\n")
+	usersr, err := client.Users(&v1.Users{
+		Username: user.Username,
+	})
+	if err != nil {
+		return err
+	}
+	if usersr.TotalMatches != 1 {
+		return fmt.Errorf("Wrong matching users: want %v, got %v", 1,
+			usersr.TotalMatches)
+	}
+
+	// Fetch user by public key
+	fmt.Printf("  Fetch user by public key\n")
+	usersr, err = client.Users(&v1.Users{
+		PublicKey: user.PublicKey,
+	})
+	if err != nil {
+		return err
+	}
+	if usersr.TotalMatches != 1 {
+		return fmt.Errorf("Wrong matching users: want %v, got %v", 1,
+			usersr.TotalMatches)
+	}
+
 	// Login admin
+	fmt.Printf("  Login as admin\n")
 	err = login(admin)
+	if err != nil {
+		return err
+	}
+
+	// Fetch user by email
+	fmt.Printf("  Fetch user by email\n")
+	usersr, err = client.Users(&v1.Users{
+		Email: user.Email,
+	})
+	if err != nil {
+		return err
+	}
+	if usersr.TotalMatches != 1 {
+		return fmt.Errorf("Wrong matching users: want %v, got %v", 1,
+			usersr.TotalMatches)
+	}
+
+	// Rescan user credits
+	fmt.Printf("  Rescan user credits\n")
+	upayrc := userPaymentsRescanCmd{}
+	upayrc.Args.UserID = user.ID
+	err = upayrc.Execute(nil)
 	if err != nil {
 		return err
 	}
