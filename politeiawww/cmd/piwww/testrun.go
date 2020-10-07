@@ -365,6 +365,9 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 
 	// Login with new password
 	err = login(user)
+	if err != nil {
+		return err
+	}
 
 	// Update user key
 	fmt.Printf("  Update user key\n")
