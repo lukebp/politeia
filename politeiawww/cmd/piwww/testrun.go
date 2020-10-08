@@ -188,6 +188,9 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	// Logout user
 	fmt.Printf("  Logout user\n")
 	err = logout()
+	if err != nil {
+		return err
+	}
 
 	// Log back in
 	err = login(user)
