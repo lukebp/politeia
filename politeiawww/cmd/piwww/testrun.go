@@ -185,6 +185,90 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		PublicKey: lr.PublicKey,
 	}
 
+	// Logout user
+	fmt.Printf("  Logout user\n")
+	err = logout()
+
+	// Log back in
+	err = login(user)
+	if err != nil {
+		return err
+	}
+
+	// Me
+	fmt.Printf("  Me\n")
+	_, err = client.Me()
+	if err != nil {
+		return err
+	}
+
+	// Edit user
+	fmt.Printf("  Edit user\n")
+	var n uint64 = 1 << 0
+	_, err = client.EditUser(
+		&www.EditUser{
+			EmailNotifications: &n,
+		})
+	if err != nil {
+		return err
+	}
+
+	// Update user key
+	fmt.Printf("  Update user key\n")
+	ukuc := shared.UserKeyUpdateCmd{}
+	err = ukuc.Execute(nil)
+	if err != nil {
+		return err
+	}
+
+	// Change username
+	fmt.Printf("  Change username\n")
+	randomStr, err = randomString(minPasswordLength)
+	if err != nil {
+		return err
+	}
+	cuc := shared.UserUsernameChangeCmd{}
+	cuc.Args.Password = user.Password
+	cuc.Args.NewUsername = randomStr
+	err = cuc.Execute(nil)
+	if err != nil {
+		return err
+	}
+	user.Username = cuc.Args.NewUsername
+
+	// Change password
+	fmt.Printf("  Change password\n")
+	cpc := shared.UserPasswordChangeCmd{}
+	cpc.Args.Password = user.Password
+	cpc.Args.NewPassword = randomStr
+	err = cpc.Execute(nil)
+	if err != nil {
+		return err
+	}
+	user.Password = cpc.Args.NewPassword
+
+	// Reset user password
+	fmt.Printf("  Reset user password\n")
+	// Generate new random password
+	randomStr, err = randomString(minPasswordLength)
+	if err != nil {
+		return err
+	}
+	uprc := shared.UserPasswordResetCmd{}
+	uprc.Args.Email = user.Email
+	uprc.Args.Username = user.Username
+	uprc.Args.NewPassword = randomStr
+	err = uprc.Execute(nil)
+	if err != nil {
+		return err
+	}
+	user.Password = randomStr
+
+	// Login with new password
+	err = login(user)
+	if err != nil {
+		return err
+	}
 	// Check if paywall is enabled.  Paywall address and paywall
 	// amount will be zero values if paywall has been disabled.
 	if lr.PaywallAddress != "" && lr.PaywallAmount != 0 {
@@ -276,81 +360,6 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		time.Sleep(sleepInterval)
 	}
 
-	// Me
-	fmt.Printf("  Me\n")
-	_, err = client.Me()
-	if err != nil {
-		return err
-	}
-
-	// Change password
-	fmt.Printf("  Change password\n")
-	randomStr, err = randomString(minPasswordLength)
-	if err != nil {
-		return err
-	}
-	cpc := shared.UserPasswordChangeCmd{}
-	cpc.Args.Password = user.Password
-	cpc.Args.NewPassword = randomStr
-	err = cpc.Execute(nil)
-	if err != nil {
-		return err
-	}
-	user.Password = cpc.Args.NewPassword
-
-	// Change username
-	fmt.Printf("  Change username\n")
-	cuc := shared.UserUsernameChangeCmd{}
-	cuc.Args.Password = user.Password
-	cuc.Args.NewUsername = randomStr
-	err = cuc.Execute(nil)
-	if err != nil {
-		return err
-	}
-	user.Username = cuc.Args.NewUsername
-
-	// Edit user
-	fmt.Printf("  Edit user\n")
-	var n uint64 = 1 << 0
-	_, err = client.EditUser(
-		&www.EditUser{
-			EmailNotifications: &n,
-		})
-	if err != nil {
-		return err
-	}
-
-	// Reset user password
-	fmt.Printf("  Reset user password\n")
-	// Generate new random password
-	randomStr, err = randomString(minPasswordLength)
-	if err != nil {
-		return err
-	}
-	uprc := shared.UserPasswordResetCmd{}
-	uprc.Args.Email = user.Email
-	uprc.Args.Username = user.Username
-	uprc.Args.NewPassword = randomStr
-	err = uprc.Execute(nil)
-	if err != nil {
-		return err
-	}
-	user.Password = randomStr
-
-	// Login with new password
-	err = login(user)
-	if err != nil {
-		return err
-	}
-
-	// Update user key
-	fmt.Printf("  Update user key\n")
-	ukuc := shared.UserKeyUpdateCmd{}
-	err = ukuc.Execute(nil)
-	if err != nil {
-		return err
-	}
-
 	// Fetch user by usernam
 	fmt.Printf("  Fetch user by username\n")
 	usersr, err := client.Users(&www.Users{
@@ -377,24 +386,20 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 			usersr.TotalMatches)
 	}
 
+	// User details
+	fmt.Printf("  User details\n")
+	udc := userDetailsCmd{}
+	udc.Args.UserID = user.ID
+	err = udc.Execute(nil)
+	if err != nil {
+		return err
+	}
+
 	// Login admin
 	fmt.Printf("  Login as admin\n")
 	err = login(admin)
 	if err != nil {
 		return err
-	}
-
-	// Fetch user by email
-	fmt.Printf("  Fetch user by email\n")
-	usersr, err = client.Users(&www.Users{
-		Email: user.Email,
-	})
-	if err != nil {
-		return err
-	}
-	if usersr.TotalMatches != 1 {
-		return fmt.Errorf("Wrong matching users: want %v, got %v", 1,
-			usersr.TotalMatches)
 	}
 
 	// Rescan user credits
@@ -420,6 +425,19 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	err = userManage(user.ID, userReactivateAction, "testing")
 	if err != nil {
 		return err
+	}
+
+	// Fetch user by email
+	fmt.Printf("  Fetch user by email\n")
+	usersr, err = client.Users(&www.Users{
+		Email: user.Email,
+	})
+	if err != nil {
+		return err
+	}
+	if usersr.TotalMatches != 1 {
+		return fmt.Errorf("Wrong matching users: want %v, got %v", 1,
+			usersr.TotalMatches)
 	}
 
 	return nil
