@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/decred/politeia/politeiad/api/v1/identity"
-	v1 "github.com/decred/politeia/politeiawww/api/www/v1"
+	www "github.com/decred/politeia/politeiawww/api/www/v1"
 	"github.com/decred/politeia/politeiawww/cmd/shared"
 	"github.com/decred/politeia/util"
 )
@@ -53,10 +53,10 @@ func logout() error {
 }
 
 // userPaymentVerify ensures current logged in user has paid registration fee
-func userRegistrationPayment() (v1.UserRegistrationPaymentReply, error) {
+func userRegistrationPayment() (www.UserRegistrationPaymentReply, error) {
 	urvr, err := client.UserRegistrationPayment()
 	if err != nil {
-		return v1.UserRegistrationPaymentReply{}, err
+		return www.UserRegistrationPaymentReply{}, err
 	}
 	return *urvr, nil
 }
@@ -72,7 +72,7 @@ func randomString(length int) (string, error) {
 
 // userNew creates a new user and returnes user's public key.
 func userNew(email, password, username string) (*identity.FullIdentity, error) {
-	fmt.Printf("Creating user: %v\n", email)
+	fmt.Printf("  Creating user: %v\n", email)
 
 	// Create user identity and save it to disk
 	id, err := shared.NewIdentity()
@@ -81,7 +81,7 @@ func userNew(email, password, username string) (*identity.FullIdentity, error) {
 	}
 
 	// Setup new user request
-	nu := &v1.NewUser{
+	nu := &www.NewUser{
 		Email:     email,
 		Username:  username,
 		Password:  shared.DigestSHA3(password),
@@ -111,8 +111,7 @@ func userManage(userID, action, reason string) error {
 // testUser tests piwww user specific routes.
 func testUserRoutes(admin testUser, minPasswordLength int) error {
 	// sleepInterval is the time to wait in between requests
-	// when polling politeiawww for paywall tx confirmations
-	// or RFP vote results.
+	// when polling politeiawww for paywall tx confirmations.
 	const sleepInterval = 15 * time.Second
 
 	var (
@@ -123,12 +122,13 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 
 		// numCredits is the number of proposal credits that will be
 		// purchased using the testnet faucet.
-		numCredits = v1.ProposalListPageSize * 2
+		numCredits = 1
 
 		// Test users
 		user testUser
 	)
-	fmt.Printf("Running testUserRoutes\n")
+	// Run user routes.
+	fmt.Printf("Running user routes\n")
 
 	// Create user and verify email
 	randomStr, err := randomString(minPasswordLength)
@@ -144,8 +144,8 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	}
 
 	// Resed email verification
-	fmt.Printf("Resend email Verification\n")
-	rvr, err := client.ResendVerification(v1.ResendVerification{
+	fmt.Printf("  Resend email Verification\n")
+	rvr, err := client.ResendVerification(www.ResendVerification{
 		PublicKey: hex.EncodeToString(id.Public.Key[:]),
 		Email:     email,
 	})
@@ -154,11 +154,11 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	}
 
 	// Verify email
-	fmt.Printf("Verify user's email\n")
+	fmt.Printf("  Verify user's email\n")
 	vt := rvr.VerificationToken
 	sig := id.SignMessage([]byte(vt))
 	_, err = client.VerifyNewUser(
-		&v1.VerifyNewUser{
+		&www.VerifyNewUser{
 			Email:             email,
 			VerificationToken: vt,
 			Signature:         hex.EncodeToString(sig[:]),
@@ -168,8 +168,8 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	}
 
 	// Login and store user details
-	fmt.Printf("Login user\n")
-	lr, err := client.Login(&v1.Login{
+	fmt.Printf("  Login user\n")
+	lr, err := client.Login(&www.Login{
 		Email:    email,
 		Password: shared.DigestSHA3(password),
 	})
@@ -193,23 +193,8 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		fmt.Printf("WARNING: politeiawww paywall is disabled\n")
 	}
 
-	// Run user routes. These are the routes
-	// that reqiure the user to be logged in.
-	fmt.Printf("Running user routes\n")
-
 	// Pay user registration fee
 	if paywallEnabled {
-		// New proposal should fail - registration fee not paid
-		fmt.Printf("  New proposal failure: registration fee not paid\n")
-		npc := proposalNewCmd{
-			Random: true,
-		}
-		err = npc.Execute(nil)
-		if err == nil {
-			return fmt.Errorf("submited proposal without " +
-				"paying registration fee")
-		}
-
 		// Pay user registration fee
 		fmt.Printf("  Paying user registration fee\n")
 		txID, err := util.PayWithTestnetFaucet(context.Background(),
@@ -243,24 +228,13 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	}
 
 	// Purchase proposal credits
-	fmt.Printf("  Proposal paywall details\n")
+	fmt.Printf("  User proposal paywall\n")
 	ppdr, err := client.UserProposalPaywall()
 	if err != nil {
 		return err
 	}
 
 	if paywallEnabled {
-		// New proposal failure - no proposal credits
-		fmt.Printf("  New proposal failure: no proposal credits\n")
-		pnc := proposalNewCmd{
-			Random: true,
-		}
-		err = pnc.Execute(nil)
-		if err == nil {
-			return fmt.Errorf("submited proposal without " +
-				"purchasing any proposal credits")
-		}
-
 		// Purchase proposal credits
 		fmt.Printf("  Purchasing %v proposal credits\n", numCredits)
 
@@ -339,7 +313,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	fmt.Printf("  Edit user\n")
 	var n uint64 = 1 << 0
 	_, err = client.EditUser(
-		&v1.EditUser{
+		&www.EditUser{
 			EmailNotifications: &n,
 		})
 	if err != nil {
@@ -379,7 +353,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 
 	// Fetch user by usernam
 	fmt.Printf("  Fetch user by username\n")
-	usersr, err := client.Users(&v1.Users{
+	usersr, err := client.Users(&www.Users{
 		Username: user.Username,
 	})
 	if err != nil {
@@ -392,7 +366,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 
 	// Fetch user by public key
 	fmt.Printf("  Fetch user by public key\n")
-	usersr, err = client.Users(&v1.Users{
+	usersr, err = client.Users(&www.Users{
 		PublicKey: user.PublicKey,
 	})
 	if err != nil {
@@ -412,7 +386,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 
 	// Fetch user by email
 	fmt.Printf("  Fetch user by email\n")
-	usersr, err = client.Users(&v1.Users{
+	usersr, err = client.Users(&www.Users{
 		Email: user.Email,
 	})
 	if err != nil {
@@ -466,14 +440,14 @@ func (cmd *testRunCmd) Execute(args []string) error {
 	fmt.Printf("Running pre-testrun validation\n")
 
 	// Policy
-	fmt.Printf("Policy\n")
+	fmt.Printf("  Policy\n")
 	policy, err := client.Policy()
 	if err != nil {
 		return err
 	}
 
 	// Version (CSRF tokens)
-	fmt.Printf("Version\n")
+	fmt.Printf("  Version\n")
 	version, err := client.Version()
 	if err != nil {
 		return err
