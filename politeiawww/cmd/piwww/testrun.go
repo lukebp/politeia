@@ -184,7 +184,7 @@ func testUserRoutes(admin testUser) error {
 	// Create new user
 	user, id, _, err := userCreate()
 	if err != nil {
-		return testUser{}, err
+		return nil, nil, err
 	}
 
 	// Resed email verification
@@ -200,7 +200,7 @@ func testUserRoutes(admin testUser) error {
 	// Verify email
 	err = userEmailVerify(rvr.VerificationToken, user.Email, id)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// Login and store user details
@@ -210,7 +210,7 @@ func testUserRoutes(admin testUser) error {
 		Password: shared.DigestSHA3(user.Password),
 	})
 	if err != nil {
-		return testUser{}, err
+		return nil, nil, err
 	}
 
 	user.PublicKey = lr.PublicKey
@@ -319,7 +319,7 @@ func testUserRoutes(admin testUser) error {
 		txID, err := util.PayWithTestnetFaucet(context.Background(),
 			cfg.FaucetHost, user.PaywallAddress, user.PaywallAmount, "")
 		if err != nil {
-			return testUser{}, err
+			return err
 		}
 
 		dcr := float64(user.PaywallAmount) / 1e8
@@ -334,12 +334,12 @@ func testUserRoutes(admin testUser) error {
 	// of confirmations.
 	upvr, err := userRegistrationPayment()
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 	for !upvr.HasPaid {
 		upvr, err = userRegistrationPayment()
 		if err != nil {
-			return testUser{}, err
+			return err
 		}
 
 		fmt.Printf("  Verify user payment: waiting for tx confirmations...\n")
@@ -350,7 +350,7 @@ func testUserRoutes(admin testUser) error {
 	fmt.Printf("  User proposal paywall\n")
 	ppdr, err := client.UserProposalPaywall()
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 
 	if paywallEnabled {
@@ -361,7 +361,7 @@ func testUserRoutes(admin testUser) error {
 		txID, err := util.PayWithTestnetFaucet(context.Background(),
 			cfg.FaucetHost, ppdr.PaywallAddress, atoms, "")
 		if err != nil {
-			return testUser{}, err
+			return err
 		}
 
 		fmt.Printf("  Paid %v DCR to %v with txID %v\n",
@@ -373,7 +373,7 @@ func testUserRoutes(admin testUser) error {
 	for {
 		pppr, err := client.UserProposalPaywallTx()
 		if err != nil {
-			return testUser{}, err
+			return err
 		}
 
 		// TxID will be blank if the paywall has been disabled
@@ -383,7 +383,7 @@ func testUserRoutes(admin testUser) error {
 			// have been added to the user's account.
 			upcr, err := client.UserProposalCredits()
 			if err != nil {
-				return testUser{}, err
+				return err
 			}
 
 			if !paywallEnabled || len(upcr.UnspentCredits) == numCredits {
@@ -401,7 +401,7 @@ func testUserRoutes(admin testUser) error {
 		Username: user.Username,
 	})
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 	if usersr.TotalMatches != 1 {
 		return fmt.Errorf("Wrong matching users: want %v, got %v", 1,
@@ -414,7 +414,7 @@ func testUserRoutes(admin testUser) error {
 		PublicKey: user.PublicKey,
 	})
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 	if usersr.TotalMatches != 1 {
 		return fmt.Errorf("Wrong matching users: want %v, got %v", 1,
@@ -427,14 +427,14 @@ func testUserRoutes(admin testUser) error {
 	udc.Args.UserID = user.ID
 	err = udc.Execute(nil)
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 
 	// Login admin
 	fmt.Printf("  Login as admin\n")
 	err = login(admin)
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 
 	// Rescan user credits
@@ -443,7 +443,7 @@ func testUserRoutes(admin testUser) error {
 	upayrc.Args.UserID = user.ID
 	err = upayrc.Execute(nil)
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 
 	// Deactivate user
@@ -451,7 +451,7 @@ func testUserRoutes(admin testUser) error {
 	const userDeactivateAction = "deactivate"
 	err = userManage(user.ID, userDeactivateAction, "testing")
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 
 	// Reactivate user
