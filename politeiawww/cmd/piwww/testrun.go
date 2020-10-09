@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/decred/politeia/decredplugin"
 	"github.com/decred/politeia/politeiad/api/v1/identity"
 	"github.com/decred/politeia/politeiad/api/v1/mime"
 	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
@@ -32,11 +31,13 @@ type testRunCmd struct {
 
 // testUser stores user details that are used throughout the test run.
 type testUser struct {
-	ID        string // UUID
-	Email     string // Email
-	Username  string // Username
-	Password  string // Password (not hashed)
-	PublicKey string // Public key of active identity
+	ID             string // UUID
+	Email          string // Email
+	Username       string // Username
+	Password       string // Password (not hashed)
+	PublicKey      string // Public key of active identity
+	PaywallAddress string // Paywall address
+	PaywallAmount  uint64 // Paywall amount
 }
 
 // login logs in the specified user.
@@ -117,18 +118,18 @@ func userManage(userID, action, reason string) error {
 // createUserAndVerifyEmail creates new user, tries to resend email verification
 // if resendEmail flag is true, verfies user's email, logs in as the newly
 // created user and finally returns the created testUser
-func createUserAndVerifyEmail(minPasswordLength int, resendEmail bool) (*testUser, *www.LoginReply, error) {
+func createUserAndVerifyEmail(minPasswordLength int, resendEmail bool) (*testUser, error) {
 	// Create user and verify email
 	randomStr, err := randomString(minPasswordLength)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	email := randomStr + "@example.com"
 	username := randomStr
 	password := randomStr
 	id, vt, err := userNew(email, password, username)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	var rvr *www.ResendVerificationReply
@@ -140,7 +141,7 @@ func createUserAndVerifyEmail(minPasswordLength int, resendEmail bool) (*testUse
 			Email:     email,
 		})
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		vt = rvr.VerificationToken
 	}
@@ -155,7 +156,7 @@ func createUserAndVerifyEmail(minPasswordLength int, resendEmail bool) (*testUse
 			Signature:         hex.EncodeToString(sig[:]),
 		})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Login and store user details
@@ -165,7 +166,7 @@ func createUserAndVerifyEmail(minPasswordLength int, resendEmail bool) (*testUse
 		Password: shared.DigestSHA3(password),
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Update user key
@@ -173,16 +174,18 @@ func createUserAndVerifyEmail(minPasswordLength int, resendEmail bool) (*testUse
 	ukuc := shared.UserKeyUpdateCmd{}
 	err = ukuc.Execute(nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	return &testUser{
-		ID:        lr.UserID,
-		Email:     email,
-		Username:  username,
-		Password:  password,
-		PublicKey: lr.PublicKey,
-	}, lr, nil
+		ID:             lr.UserID,
+		Email:          email,
+		Username:       username,
+		Password:       password,
+		PublicKey:      lr.PublicKey,
+		PaywallAddress: lr.PaywallAddress,
+		PaywallAmount:  lr.PaywallAmount,
+	}, nil
 }
 
 // testUser tests piwww user specific routes.
@@ -208,7 +211,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	fmt.Printf("Running user routes\n")
 
 	// Create new user, resend verification email then verify email
-	user, lr, err := createUserAndVerifyEmail(minPasswordLength, true)
+	user, err := createUserAndVerifyEmail(minPasswordLength, true)
 	if err != nil {
 		return err
 	}
@@ -295,7 +298,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 
 	// Check if paywall is enabled.  Paywall address and paywall
 	// amount will be zero values if paywall has been disabled.
-	if lr.PaywallAddress != "" && lr.PaywallAmount != 0 {
+	if user.PaywallAddress != "" && user.PaywallAmount != 0 {
 		paywallEnabled = true
 	} else {
 		fmt.Printf("WARNING: politeiawww paywall is disabled\n")
@@ -306,14 +309,14 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		// Pay user registration fee
 		fmt.Printf("  Paying user registration fee\n")
 		txID, err := util.PayWithTestnetFaucet(context.Background(),
-			cfg.FaucetHost, lr.PaywallAddress, lr.PaywallAmount, "")
+			cfg.FaucetHost, user.PaywallAddress, user.PaywallAmount, "")
 		if err != nil {
 			return err
 		}
 
-		dcr := float64(lr.PaywallAmount) / 1e8
+		dcr := float64(user.PaywallAmount) / 1e8
 		fmt.Printf("  Paid %v DCR to %v with txID %v\n",
-			dcr, lr.PaywallAddress, txID)
+			dcr, user.PaywallAddress, txID)
 	}
 
 	// Wait for user registration payment confirmations
@@ -354,7 +357,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		}
 
 		fmt.Printf("  Paid %v DCR to %v with txID %v\n",
-			float64(atoms)/1e8, lr.PaywallAddress, txID)
+			float64(atoms)/1e8, user.PaywallAddress, txID)
 	}
 
 	// Keep track of when the pending proposal credit payment
@@ -546,7 +549,7 @@ func testProposalRoutes(admin testUser, pubKey string, minPasswordLength int) er
 
 	// Create test user
 	fmt.Printf("Creating test user\n")
-	user, _, err := createUserAndVerifyEmail(minPasswordLength, false)
+	user, err := createUserAndVerifyEmail(minPasswordLength, false)
 	if err != nil {
 		return err
 	}
@@ -623,59 +626,6 @@ func testProposalRoutes(admin testUser, pubKey string, minPasswordLength int) er
 	err = epc.Execute(nil)
 	if err != nil {
 		return err
-	}
-
-	// Authorize vote then revoke
-	const (
-		voteAuthActionAuthorize = "authorize"
-		voteAuthActionRevoke    = "revoke"
-	)
-	fmt.Printf("  Authorize vote: authorize\n")
-	avc := voteAuthorizeCmd{}
-	avc.Args.Token = token
-	avc.Args.Action = voteAuthActionAuthorize
-	err = avc.Execute(nil)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("  Authorize vote: revoke\n")
-	avc.Args.Action = voteAuthActionRevoke
-	err = avc.Execute(nil)
-	if err != nil {
-		return err
-	}
-
-	// Validate vote status
-	fmt.Printf("  Vote status\n")
-	vsr, err := client.VoteStatus(token)
-	if err != nil {
-		return err
-	}
-
-	if vsr.Status != www.PropVoteStatusNotAuthorized {
-		return fmt.Errorf("vote status got %v, want %v",
-			vsr.Status, www.PropVoteStatusNotAuthorized)
-	}
-
-	// Authorize vote
-	fmt.Printf("  Authorize vote: authorize\n")
-	avc.Args.Action = decredplugin.AuthVoteActionAuthorize
-	err = avc.Execute(nil)
-	if err != nil {
-		return err
-	}
-
-	// Validate vote status
-	fmt.Printf("  Vote status\n")
-	vsr, err = client.VoteStatus(token)
-	if err != nil {
-		return err
-	}
-
-	if vsr.Status != www.PropVoteStatusAuthorized {
-		return fmt.Errorf("vote status got %v, want %v",
-			vsr.Status, www.PropVoteStatusNotAuthorized)
 	}
 
 	// Logout
