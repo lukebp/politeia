@@ -52,7 +52,7 @@ func logout() error {
 	return nil
 }
 
-// userPaymentVerify ensures current logged in user has paid registration fee
+// userRegistrationPayment ensures current logged in user has paid registration fee
 func userRegistrationPayment() (www.UserRegistrationPaymentReply, error) {
 	urvr, err := client.UserRegistrationPayment()
 	if err != nil {
