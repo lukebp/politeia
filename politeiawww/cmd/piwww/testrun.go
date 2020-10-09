@@ -77,13 +77,13 @@ func randomString(length int) (string, error) {
 }
 
 // userNew creates a new user and returnes user's public key.
-func userNew(email, password, username string) (*identity.FullIdentity, error) {
+func userNew(email, password, username string) (*identity.FullIdentity, string, error) {
 	fmt.Printf("  Creating user: %v\n", email)
 
 	// Create user identity and save it to disk
 	id, err := shared.NewIdentity()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// Setup new user request
@@ -93,12 +93,12 @@ func userNew(email, password, username string) (*identity.FullIdentity, error) {
 		Password:  shared.DigestSHA3(password),
 		PublicKey: hex.EncodeToString(id.Public.Key[:]),
 	}
-	_, err = client.NewUser(nu)
+	nur, err := client.NewUser(nu)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return id, nil
+	return id, nur.VerificationToken, nil
 }
 
 // userManage sends a usermanage command
@@ -112,6 +112,77 @@ func userManage(userID, action, reason string) error {
 		return err
 	}
 	return nil
+}
+
+// createUserAndVerifyEmail creates new user, tries to resend email verification
+// if resendEmail flag is true, verfies user's email, logs in as the newly
+// created user and finally returns the created testUser
+func createUserAndVerifyEmail(minPasswordLength int, resendEmail bool) (*testUser, *www.LoginReply, error) {
+	// Create user and verify email
+	randomStr, err := randomString(minPasswordLength)
+	if err != nil {
+		return nil, nil, err
+	}
+	email := randomStr + "@example.com"
+	username := randomStr
+	password := randomStr
+	id, vt, err := userNew(email, password, username)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var rvr *www.ResendVerificationReply
+	if resendEmail {
+		// Resed email verification
+		fmt.Printf("  Resend email Verification\n")
+		rvr, err = client.ResendVerification(www.ResendVerification{
+			PublicKey: hex.EncodeToString(id.Public.Key[:]),
+			Email:     email,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		vt = rvr.VerificationToken
+	}
+
+	// Verify email
+	fmt.Printf("  Verify user's email\n")
+	sig := id.SignMessage([]byte(vt))
+	_, err = client.VerifyNewUser(
+		&www.VerifyNewUser{
+			Email:             email,
+			VerificationToken: vt,
+			Signature:         hex.EncodeToString(sig[:]),
+		})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Login and store user details
+	fmt.Printf("  Login user\n")
+	lr, err := client.Login(&www.Login{
+		Email:    email,
+		Password: shared.DigestSHA3(password),
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Update user key
+	fmt.Printf("  Update user key\n")
+	ukuc := shared.UserKeyUpdateCmd{}
+	err = ukuc.Execute(nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &testUser{
+		ID:        lr.UserID,
+		Email:     email,
+		Username:  username,
+		Password:  password,
+		PublicKey: lr.PublicKey,
+	}, lr, nil
 }
 
 // testUser tests piwww user specific routes.
@@ -130,65 +201,16 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		// purchased using the testnet faucet.
 		numCredits = 1
 
-		// Test users
-		user testUser
+		// Test user
+		user *testUser
 	)
 	// Run user routes.
 	fmt.Printf("Running user routes\n")
 
-	// Create user and verify email
-	randomStr, err := randomString(minPasswordLength)
-	if err != nil {
-		return testUser{}, err
-	}
-	email := randomStr + "@example.com"
-	username := randomStr
-	password := randomStr
-	id, err := userNew(email, password, username)
-	if err != nil {
-		return testUser{}, err
-	}
-
-	// Resed email verification
-	fmt.Printf("  Resend email Verification\n")
-	rvr, err := client.ResendVerification(www.ResendVerification{
-		PublicKey: hex.EncodeToString(id.Public.Key[:]),
-		Email:     email,
-	})
+	// Create new user, resend verification email then verify email
+	user, lr, err := createUserAndVerifyEmail(minPasswordLength, true)
 	if err != nil {
 		return err
-	}
-
-	// Verify email
-	fmt.Printf("  Verify user's email\n")
-	vt := rvr.VerificationToken
-	sig := id.SignMessage([]byte(vt))
-	_, err = client.VerifyNewUser(
-		&www.VerifyNewUser{
-			Email:             email,
-			VerificationToken: vt,
-			Signature:         hex.EncodeToString(sig[:]),
-		})
-	if err != nil {
-		return err
-	}
-
-	// Login and store user details
-	fmt.Printf("  Login user\n")
-	lr, err := client.Login(&www.Login{
-		Email:    email,
-		Password: shared.DigestSHA3(password),
-	})
-	if err != nil {
-		return testUser{}, err
-	}
-
-	user = testUser{
-		ID:        lr.UserID,
-		Email:     email,
-		Username:  username,
-		Password:  password,
-		PublicKey: lr.PublicKey,
 	}
 
 	// Logout user
@@ -199,7 +221,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	}
 
 	// Log back in
-	err = login(user)
+	err = login(*user)
 	if err != nil {
 		return err
 	}
@@ -222,17 +244,9 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		return err
 	}
 
-	// Update user key
-	fmt.Printf("  Update user key\n")
-	ukuc := shared.UserKeyUpdateCmd{}
-	err = ukuc.Execute(nil)
-	if err != nil {
-		return err
-	}
-
 	// Change username
 	fmt.Printf("  Change username\n")
-	randomStr, err = randomString(minPasswordLength)
+	randomStr, err := randomString(minPasswordLength)
 	if err != nil {
 		return err
 	}
@@ -274,10 +288,11 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	user.Password = randomStr
 
 	// Login with new password
-	err = login(user)
+	err = login(*user)
 	if err != nil {
 		return err
 	}
+
 	// Check if paywall is enabled.  Paywall address and paywall
 	// amount will be zero values if paywall has been disabled.
 	if lr.PaywallAddress != "" && lr.PaywallAmount != 0 {
@@ -293,7 +308,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		txID, err := util.PayWithTestnetFaucet(context.Background(),
 			cfg.FaucetHost, lr.PaywallAddress, lr.PaywallAmount, "")
 		if err != nil {
-			return testUser{}, err
+			return err
 		}
 
 		dcr := float64(lr.PaywallAmount) / 1e8
@@ -308,12 +323,12 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	// of confirmations.
 	upvr, err := userRegistrationPayment()
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 	for !upvr.HasPaid {
 		upvr, err = userRegistrationPayment()
 		if err != nil {
-			return testUser{}, err
+			return err
 		}
 
 		fmt.Printf("  Verify user payment: waiting for tx confirmations...\n")
@@ -324,7 +339,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	fmt.Printf("  User proposal paywall\n")
 	ppdr, err := client.UserProposalPaywall()
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 
 	if paywallEnabled {
@@ -335,7 +350,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		txID, err := util.PayWithTestnetFaucet(context.Background(),
 			cfg.FaucetHost, ppdr.PaywallAddress, atoms, "")
 		if err != nil {
-			return testUser{}, err
+			return err
 		}
 
 		fmt.Printf("  Paid %v DCR to %v with txID %v\n",
@@ -347,7 +362,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	for {
 		pppr, err := client.UserProposalPaywallTx()
 		if err != nil {
-			return testUser{}, err
+			return err
 		}
 
 		// TxID will be blank if the paywall has been disabled
@@ -357,7 +372,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 			// have been added to the user's account.
 			upcr, err := client.UserProposalCredits()
 			if err != nil {
-				return testUser{}, err
+				return err
 			}
 
 			if !paywallEnabled || len(upcr.UnspentCredits) == numCredits {
@@ -375,7 +390,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		Username: user.Username,
 	})
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 	if usersr.TotalMatches != 1 {
 		return fmt.Errorf("Wrong matching users: want %v, got %v", 1,
@@ -388,7 +403,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 		PublicKey: user.PublicKey,
 	})
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 	if usersr.TotalMatches != 1 {
 		return fmt.Errorf("Wrong matching users: want %v, got %v", 1,
@@ -401,14 +416,14 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	udc.Args.UserID = user.ID
 	err = udc.Execute(nil)
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 
 	// Login admin
 	fmt.Printf("  Login as admin\n")
 	err = login(admin)
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 
 	// Rescan user credits
@@ -417,7 +432,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	upayrc.Args.UserID = user.ID
 	err = upayrc.Execute(nil)
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 
 	// Deactivate user
@@ -425,7 +440,7 @@ func testUserRoutes(admin testUser, minPasswordLength int) error {
 	const userDeactivateAction = "deactivate"
 	err = userManage(user.ID, userDeactivateAction, "testing")
 	if err != nil {
-		return testUser{}, err
+		return err
 	}
 
 	// Reactivate user
@@ -525,7 +540,17 @@ func newProposal(rfp bool, linkto string) (*pi.ProposalNew, error) {
 }
 
 // testPropsWithComments tests the propsal & comments routes
-func testPropsWithComments(admin, user testUser, pubKey string) error {
+func testProposalRoutes(admin testUser, pubKey string, minPasswordLength int) error {
+	// Run proposal routes.
+	fmt.Printf("Running proposal routes\n")
+
+	// Create test user
+	fmt.Printf("Creating test user\n")
+	user, _, err := createUserAndVerifyEmail(minPasswordLength, false)
+	if err != nil {
+		return err
+	}
+
 	// Submit new proposal
 	fmt.Printf("  New proposal\n")
 	pn, err := newNormalProposal()
@@ -587,7 +612,7 @@ func testPropsWithComments(admin, user testUser, pubKey string) error {
 
 	// Log back in with user
 	fmt.Printf("  Login user\n")
-	err = login(user)
+	err = login(*user)
 	if err != nil {
 		return err
 	}
@@ -598,162 +623,6 @@ func testPropsWithComments(admin, user testUser, pubKey string) error {
 	err = epc.Execute(nil)
 	if err != nil {
 		return err
-	}
-
-	// New comment - parent
-	fmt.Printf("  New comment: parent\n")
-	ncc := commentNewCmd{}
-	ncc.Args.Token = token
-	ncc.Args.Comment = "this is a comment"
-	ncc.Args.ParentID = "0"
-	err = ncc.Execute(nil)
-	if err != nil {
-		return err
-	}
-
-	// New comment - reply
-	fmt.Printf("  New comment: reply\n")
-	ncc.Args.Token = token
-	ncc.Args.Comment = "this is a comment reply"
-	ncc.Args.ParentID = "1"
-	err = ncc.Execute(nil)
-	if err != nil {
-		return err
-	}
-
-	// Validate comments
-	fmt.Printf("  Proposal details\n")
-	propReq := pi.ProposalRequest{
-		Token: token,
-	}
-	pdr, err := client.Proposals(pi.Proposals{
-		State:        pi.PropStateVetted,
-		Requests:     []pi.ProposalRequest{propReq},
-		IncludeFiles: false,
-	})
-	if err != nil {
-		return err
-	}
-
-	prop := pdr.Proposals[token]
-	err = verifyProposal(prop, pubKey)
-	if err != nil {
-		return fmt.Errorf("verify proposal failed: %v", err)
-	}
-
-	if prop.Comments != 2 {
-		return fmt.Errorf("proposal num comments got %v, want 2",
-			prop.Comments)
-	}
-
-	fmt.Printf("  Proposal comments\n")
-	gcr, err := client.Comments(pi.Comments{
-		Token: token,
-		State: pi.PropStateVetted,
-	})
-	if err != nil {
-		return fmt.Errorf("Comments: %v", err)
-	}
-
-	if len(gcr.Comments) != 2 {
-		return fmt.Errorf("num comments got %v, want 2",
-			len(gcr.Comments))
-	}
-
-	for _, v := range gcr.Comments {
-		// We check the userID because userIDs are not part of
-		// the politeiad comment record. UserIDs are stored in
-		// in politeiawww and are added to the comments at the
-		// time of the request. This introduces the potential
-		// for errors.
-		if v.UserID != user.ID {
-			return fmt.Errorf("comment userID got %v, want %v",
-				v.UserID, user.ID)
-		}
-	}
-
-	// Comment vote sequence
-	const (
-		// Comment actions
-		commentActionUpvote   = "upvote"
-		commentActionDownvote = "downvote"
-	)
-	cvc := commentVoteCmd{}
-	cvc.Args.Token = pr.CensorshipRecord.Token
-	cvc.Args.CommentID = "1"
-	cvc.Args.Vote = commentActionUpvote
-
-	fmt.Printf("  Comment vote: upvote\n")
-	err = cvc.Execute(nil)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("  Comment vote: upvote\n")
-	err = cvc.Execute(nil)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("  Comment vote: upvote\n")
-	err = cvc.Execute(nil)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("  Comment vote: downvote\n")
-	cvc.Args.Vote = commentActionDownvote
-	err = cvc.Execute(nil)
-	if err != nil {
-		return err
-	}
-
-	// Validate comment votes
-	fmt.Printf("  Proposal comments\n")
-	gcr, err = client.Comments(pi.Comments{
-		Token: token,
-		State: pi.PropStateVetted,
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, v := range gcr.Comments {
-		if v.CommentID == 1 {
-			// XXX validate upvotes and downvotes separately when they're
-			// added to the returned struct
-			switch {
-			//case v.Upvotes != 0:
-			//	return fmt.Errorf("comment result up votes got %v, want 0",
-			//		v.Upvotes)
-			//case v.Downvotes != 1:
-			//	return fmt.Errorf("comment result down votes got %v, want 1",
-			//		v.Downvotes)
-			case v.Score != -1:
-				return fmt.Errorf("comment vote score got %v, want -1",
-					v.Score)
-			}
-		}
-	}
-
-	fmt.Printf("  User comment votes\n")
-	cvr, err := client.CommentVotes(pi.CommentVotes{
-		State:  pi.PropStateVetted,
-		Token:  token,
-		UserID: user.ID,
-	})
-	if err != nil {
-		return err
-	}
-
-	switch {
-	case len(cvr.Votes) != 1:
-		return fmt.Errorf("user comment votes got %v, want 1",
-			len(cvr.Votes))
-
-	case cvr.Votes[0].Vote != pi.CommentVoteDownvote:
-		return fmt.Errorf("user like comment action got %v, want %v",
-			cvr.Votes[0].Vote, pi.CommentVoteDownvote)
 	}
 
 	// Authorize vote then revoke
@@ -885,8 +754,8 @@ func (cmd *testRunCmd) Execute(args []string) error {
 		return err
 	}
 
-	// Test proposal & comments routes
-	err = testPropsWithComments(admin, u, version.PubKey)
+	// Test proposal routes
+	err = testProposalRoutes(admin, version.PubKey, int(policy.MinPasswordLength))
 	if err != nil {
 		return err
 	}
