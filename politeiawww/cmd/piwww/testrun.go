@@ -613,6 +613,43 @@ func testProposalRoutes(admin testUser, pubKey string, minPasswordLength int) er
 		return err
 	}
 
+	// Get proposal details and verify status
+	fmt.Printf("  Fetch proposal record\n")
+	psr, err := client.Proposals(pi.Proposals{
+		State: pi.PropStateVetted,
+		Requests: []pi.ProposalRequest{
+			{
+				Token: token,
+			},
+		},
+	})
+	prop, ok := psr.Proposals[token]
+	if !ok {
+		return fmt.Errorf("Proposal not found: %v", token)
+	}
+	switch prop.Status {
+	case pi.PropStatusPublic:
+	default:
+		return fmt.Errorf("Proposal isn't public %v", token)
+	}
+
+	// Proposal inventory
+	var propExists bool
+	fmt.Printf("  Proposal inventory\n")
+	pir, err := client.ProposalInventory()
+	if err != nil {
+		return err
+	}
+	// Ensure public proposal token received
+	for _, t := range pir.Public {
+		if t == token {
+			propExists = true
+		}
+	}
+	if !propExists {
+		return fmt.Errorf("Proposal inventory missing public proposal: %v", token)
+	}
+
 	// Log back in with user
 	fmt.Printf("  Login user\n")
 	err = login(*user)
