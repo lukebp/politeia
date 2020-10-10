@@ -623,6 +623,10 @@ func testProposalRoutes(admin testUser, pubKey string, minPasswordLength int) er
 			},
 		},
 	})
+	if err != nil {
+		return err
+	}
+
 	prop, ok := psr.Proposals[token]
 	if !ok {
 		return fmt.Errorf("Proposal not found: %v", token)
