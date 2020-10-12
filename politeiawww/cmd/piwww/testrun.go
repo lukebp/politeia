@@ -542,7 +542,10 @@ func submitNewProposal(user testUser) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	pnr, err := client.ProposalNew(*pn)
+
+	// Edit unvetted proposal
+	fmt.Printf("  Edit unvetted proposal\n")
+	err = proposalEdit(censoredToken1, true, true)
 	if err != nil {
 		return "", err
 	}
@@ -644,8 +647,10 @@ func proposalEdit(user testUser, state pi.PropStateT, token string) error {
 		Random:   true,
 		Unvetted: state == pi.PropStateUnvetted,
 	}
-	epc.Args.Token = token
-	err = epc.Execute(nil)
+
+	// Login with admin and make the proposal public
+	fmt.Printf("  Login admin\n")
+	err = login(admin)
 	if err != nil {
 		return err
 	}
@@ -842,6 +847,36 @@ func testProposalRoutes(admin testUser) error {
 	if !publicExists {
 		return fmt.Errorf("Proposal inventory missing public proposal: %v",
 			publicToken)
+	}
+	// Ensure censored proposal token received
+	for _, t := range pir.Censored {
+		if t == censoredToken1 {
+			censoredExists = true
+		}
+	}
+	if !censoredExists {
+		return fmt.Errorf("Proposal inventory missing censored proposal: %v",
+			censoredToken1)
+	}
+	// Ensure abandoned proposal token received
+	for _, t := range pir.Abandoned {
+		if t == abandonedToken {
+			abandonedExists = true
+		}
+	}
+	if !abandonedExists {
+		return fmt.Errorf("Proposal inventory missing public proposal: %v",
+			abandonedToken)
+	}
+	// Ensure unvetted proposal token received
+	for _, t := range pir.Unvetted {
+		if t == unvettedToken {
+			unvettedExists = true
+		}
+	}
+	if !unvettedExists {
+		return fmt.Errorf("Proposal inventory missing public proposal: %v",
+			unvettedToken)
 	}
 
 	// Ensure vetted censored proposal token received
