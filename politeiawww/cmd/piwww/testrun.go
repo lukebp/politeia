@@ -848,7 +848,7 @@ func testProposalRoutes(admin testUser) error {
 		}
 	}
 	if !abandonedExists {
-		return fmt.Errorf("Proposal inventory missing public proposal: %v",
+		return fmt.Errorf("Proposal inventory missing abandoned proposal: %v",
 			abandonedToken)
 	}
 	// Ensure unvetted proposal token received
@@ -858,7 +858,7 @@ func testProposalRoutes(admin testUser) error {
 		}
 	}
 	if !unvettedExists {
-		return fmt.Errorf("Proposal inventory missing public proposal: %v",
+		return fmt.Errorf("Proposal inventory missing unvetted proposal: %v",
 			unvettedToken)
 	}
 
