@@ -5,7 +5,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/hex"
@@ -15,7 +14,6 @@ import (
 	"time"
 
 	"github.com/decred/politeia/politeiad/api/v1/identity"
-	"github.com/decred/politeia/politeiad/api/v1/mime"
 	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
 	www "github.com/decred/politeia/politeiawww/api/www/v1"
 	"github.com/decred/politeia/politeiawww/cmd/shared"
@@ -476,28 +474,6 @@ func testUserRoutes(admin testUser) error {
 	}
 
 	return nil
-}
-
-// createMDFile returns a File object that was created using a markdown file
-// filled with random text.
-func createMDFile() (*pi.File, error) {
-	var b bytes.Buffer
-	b.WriteString("This is the proposal title\n")
-
-	for i := 0; i < 10; i++ {
-		r, err := util.Random(32)
-		if err != nil {
-			return nil, err
-		}
-		b.WriteString(base64.StdEncoding.EncodeToString(r) + "\n")
-	}
-
-	return &pi.File{
-		Name:    "index.md",
-		MIME:    mime.DetectMimeType(b.Bytes()),
-		Digest:  hex.EncodeToString(util.Digest(b.Bytes())),
-		Payload: base64.StdEncoding.EncodeToString(b.Bytes()),
-	}, nil
 }
 
 // proposalNewNormal is a wrapper func which creates a proposal by calling
