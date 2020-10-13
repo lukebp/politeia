@@ -15,6 +15,7 @@ import (
 	"github.com/decred/politeia/politeiad/api/v1/identity"
 	"github.com/decred/politeia/politeiad/api/v1/mime"
 	pi "github.com/decred/politeia/politeiawww/api/pi/v1"
+	v1 "github.com/decred/politeia/politeiawww/api/www/v1"
 	utilwww "github.com/decred/politeia/politeiawww/util"
 	"github.com/decred/politeia/util"
 )
@@ -88,7 +89,7 @@ func createMDFile() (*pi.File, error) {
 	}
 
 	return &pi.File{
-		Name:    "index.md",
+		Name:    v1.PolicyIndexFilename,
 		MIME:    mime.DetectMimeType(b.Bytes()),
 		Digest:  hex.EncodeToString(util.Digest(b.Bytes())),
 		Payload: base64.StdEncoding.EncodeToString(b.Bytes()),
