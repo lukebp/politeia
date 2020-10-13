@@ -551,7 +551,15 @@ func proposalNew(rfp bool, linkto string) (*pi.ProposalNew, error) {
 }
 
 // submitNewPropsal submits new proposal and verifies it
-func submitNewProposal() (string, error) {
+//
+// This function returns with the user logged out
+func submitNewProposal(user testUser) (string, error) {
+	// Login user
+	err := login(user)
+	if err != nil {
+		return "", err
+	}
+
 	fmt.Printf("  New proposal\n")
 	pn, err := proposalNewNormal()
 	if err != nil {
@@ -578,27 +586,44 @@ func submitNewProposal() (string, error) {
 	token := pr.CensorshipRecord.Token
 	fmt.Printf("  Proposal submitted: %v\n", token)
 
+	// Logout
+	err = logout()
+	if err != nil {
+		return "", err
+	}
+
 	return token, nil
 }
 
 // proposalSetStatus calls proposal set status command
-func proposalSetStatus(state pi.PropStateT, token, reason string, status pi.PropStatusT) error {
+//
+// This function returns with user logged out
+func proposalSetStatus(user testUser, state pi.PropStateT, token, reason string, status pi.PropStatusT) error {
+	// Login user
+	err := login(user)
+	if err != nil {
+		return err
+	}
+
 	pssc := proposalStatusSetCmd{
 		Unvetted: state == pi.PropStateUnvetted,
 	}
 	pssc.Args.Token = token
 	pssc.Args.Status = strconv.Itoa(int(status))
 	pssc.Args.Reason = reason
-	err := pssc.Execute(nil)
+	err = pssc.Execute(nil)
 	if err != nil {
 		return err
 	}
-	return nil
+
+	return logout()
 }
 
 // proposalCensor censors given proposal
-func proposalCensor(state pi.PropStateT, token, reason string) error {
-	err := proposalSetStatus(state, token, reason, pi.PropStatusCensored)
+//
+// This function returns with user logged out
+func proposalCensor(user testUser, state pi.PropStateT, token, reason string) error {
+	err := proposalSetStatus(user, state, token, reason, pi.PropStatusCensored)
 	if err != nil {
 		return err
 	}
@@ -606,8 +631,10 @@ func proposalCensor(state pi.PropStateT, token, reason string) error {
 }
 
 // proposalPublic makes given proposal public
-func proposalPublic(token string) error {
-	err := proposalSetStatus(pi.PropStateUnvetted, token, "", pi.PropStatusPublic)
+//
+// This function returns with user logged out
+func proposalPublic(user testUser, token string) error {
+	err := proposalSetStatus(user, pi.PropStateUnvetted, token, "", pi.PropStatusPublic)
 	if err != nil {
 		return err
 	}
@@ -615,8 +642,10 @@ func proposalPublic(token string) error {
 }
 
 // proposalAbandon abandons given proposal
-func proposalAbandon(token, reason string) error {
-	err := proposalSetStatus(pi.PropStateVetted, token, reason,
+//
+// This function returns with user logged out
+func proposalAbandon(user testUser, token, reason string) error {
+	err := proposalSetStatus(user, pi.PropStateVetted, token, reason,
 		pi.PropStatusAbandoned)
 	if err != nil {
 		return err
@@ -625,21 +654,38 @@ func proposalAbandon(token, reason string) error {
 }
 
 // proposalEdit edits given proposal
-func proposalEdit(state pi.PropStateT, token string) error {
+//
+// This function returns with user logged out
+func proposalEdit(user testUser, state pi.PropStateT, token string) error {
+	// Login user
+	err := login(user)
+	if err != nil {
+		return err
+	}
+
 	epc := proposalEditCmd{
 		Random:   true,
 		Unvetted: state == pi.PropStateUnvetted,
 	}
 	epc.Args.Token = token
-	err := epc.Execute(nil)
+	err = epc.Execute(nil)
 	if err != nil {
 		return err
 	}
-	return nil
+
+	// Logout
+	return logout()
 }
 
 // proposals fetchs requested proposals and verifies returned map length
-func proposals(ps pi.Proposals) (map[string]pi.ProposalRecord, error) {
+//
+// This function returns with user logged out
+func proposals(user testUser, ps pi.Proposals) (map[string]pi.ProposalRecord, error) {
+	// Login user
+	err := login(user)
+	if err != nil {
+		return nil, err
+	}
 	psr, err := client.Proposals(ps)
 	if err != nil {
 		return nil, err
@@ -649,6 +695,13 @@ func proposals(ps pi.Proposals) (map[string]pi.ProposalRecord, error) {
 		return nil, fmt.Errorf("Received wrong number of proposals: want %v,"+
 			" got %v", len(ps.Requests), len(psr.Proposals))
 	}
+
+	// Logout
+	err = logout()
+	if err != nil {
+		return nil, err
+	}
+
 	return psr.Proposals, nil
 }
 
@@ -690,21 +743,14 @@ func testProposalRoutes(admin testUser) error {
 	}
 
 	// Submit new proposal
-	censoredToken1, err := submitNewProposal()
+	censoredToken1, err := submitNewProposal(*user)
 	if err != nil {
 		return err
 	}
 
 	// Edit unvetted proposal
 	fmt.Printf("  Edit unvetted proposal\n")
-	err = proposalEdit(pi.PropStateUnvetted, censoredToken1)
-	if err != nil {
-		return err
-	}
-
-	// Login with admin
-	fmt.Printf("  Login admin\n")
-	err = login(admin)
+	err = proposalEdit(*user, pi.PropStateUnvetted, censoredToken1)
 	if err != nil {
 		return err
 	}
@@ -712,126 +758,79 @@ func testProposalRoutes(admin testUser) error {
 	// Censor unvetted proposal
 	fmt.Printf("  Censor unvetted proposal\n")
 	const reason = "because!"
-	err = proposalCensor(pi.PropStateUnvetted, censoredToken1, reason)
-	if err != nil {
-		return err
-	}
-
-	// Log back in with user
-	fmt.Printf("  Login user\n")
-	err = login(*user)
+	err = proposalCensor(admin, pi.PropStateUnvetted, censoredToken1, reason)
 	if err != nil {
 		return err
 	}
 
 	// Submit new proposal
-	censoredToken2, err := submitNewProposal()
+	censoredToken2, err := submitNewProposal(*user)
 	if err != nil {
 		return err
 	}
 
-	// Login with admin and make the proposal public
-	fmt.Printf("  Login admin\n")
-	err = login(admin)
-	if err != nil {
-		return err
-	}
-
+	// Make the proposal public
 	fmt.Printf("  Set proposal status: public\n")
-	err = proposalPublic(censoredToken2)
-	if err != nil {
-		return err
-	}
-
-	// Log back in with user
-	fmt.Printf("  Login user\n")
-	err = login(*user)
+	err = proposalPublic(admin, censoredToken2)
 	if err != nil {
 		return err
 	}
 
 	// Edit vetted proposal
 	fmt.Printf("  Edit vetted proposal\n")
-	err = proposalEdit(pi.PropStateVetted, censoredToken2)
-	if err != nil {
-		return err
-	}
-
-	// Login with admin
-	fmt.Printf("  Login admin\n")
-	err = login(admin)
+	err = proposalEdit(*user, pi.PropStateVetted, censoredToken2)
 	if err != nil {
 		return err
 	}
 
 	// Censor public proposal
 	fmt.Printf("  Censor public proposal\n")
-	err = proposalCensor(pi.PropStateVetted, censoredToken2, reason)
-	if err != nil {
-		return err
-	}
-
-	// Log back in with user
-	fmt.Printf("  Login user\n")
-	err = login(*user)
+	err = proposalCensor(admin, pi.PropStateVetted, censoredToken2, reason)
 	if err != nil {
 		return err
 	}
 
 	// Submit new proposal
-	abandonedToken, err := submitNewProposal()
+	abandonedToken, err := submitNewProposal(*user)
 	if err != nil {
 		return err
 	}
 
-	// Login with admin and make the proposal public
-	fmt.Printf("  Login admin\n")
-	err = login(admin)
-	if err != nil {
-		return err
-	}
-
+	// Make the proposal public
 	fmt.Printf("  Set proposal status: public\n")
-	err = proposalPublic(abandonedToken)
+	err = proposalPublic(admin, abandonedToken)
 	if err != nil {
 		return err
 	}
 
 	// Abandon public proposal
 	fmt.Printf("  Abandon proposal\n")
-	err = proposalAbandon(abandonedToken, reason)
-	if err != nil {
-		return err
-	}
-
-	// Log back in with user
-	fmt.Printf("  Login user\n")
-	err = login(*user)
+	err = proposalAbandon(admin, abandonedToken, reason)
 	if err != nil {
 		return err
 	}
 
 	// Submit new proposal and leave it unvetted
-	unvettedToken, err := submitNewProposal()
+	unvettedToken, err := submitNewProposal(*user)
 	if err != nil {
 		return err
 	}
 
 	// Submit new proposal and make it public
-	publicToken, err := submitNewProposal()
+	publicToken, err := submitNewProposal(*user)
 	if err != nil {
 		return err
 	}
 
-	// Login with admin and make the proposal public
-	fmt.Printf("  Login admin\n")
-	err = login(admin)
-	if err != nil {
-		return err
-	}
-
+	// Make the proposal public
 	fmt.Printf("  Set proposal status: public\n")
-	err = proposalPublic(publicToken)
+	err = proposalPublic(admin, publicToken)
+	if err != nil {
+		return err
+	}
+
+	// Login admin
+	err = login(admin)
 	if err != nil {
 		return err
 	}
@@ -886,7 +885,7 @@ func testProposalRoutes(admin testUser) error {
 
 	// Get vetted proposals
 	fmt.Printf("  Fetch vetted proposals\n")
-	props, err := proposals(pi.Proposals{
+	props, err := proposals(*user, pi.Proposals{
 		State: pi.PropStateVetted,
 		Requests: []pi.ProposalRequest{
 			{
@@ -908,7 +907,7 @@ func testProposalRoutes(admin testUser) error {
 
 	// Get unvetted proposal
 	fmt.Printf("  Fetch vetted proposals\n")
-	props, err = proposals(pi.Proposals{
+	props, err = proposals(*user, pi.Proposals{
 		State: pi.PropStateUnvetted,
 		Requests: []pi.ProposalRequest{
 			{
@@ -922,13 +921,6 @@ func testProposalRoutes(admin testUser) error {
 	_, unvettedExists = props[unvettedToken]
 	if !unvettedExists {
 		return fmt.Errorf("Proposal batch missing requested unvetted proposals")
-	}
-
-	// Logout
-	fmt.Printf("  Logout\n")
-	err = logout()
-	if err != nil {
-		return err
 	}
 
 	return nil
