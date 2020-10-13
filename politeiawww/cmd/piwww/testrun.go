@@ -1159,17 +1159,26 @@ func testCommentRoutes(admin testUser) error {
 		return err
 	}
 
-	fmt.Printf("  Comment vote: upvote\n")
-	err = cvc.Execute(nil)
-	if err != nil {
-		return err
-	}
+	// XXX workaround to prevent comment votes from having the same timestamp
+	time.Sleep(time.Second)
 
 	fmt.Printf("  Comment vote: upvote\n")
 	err = cvc.Execute(nil)
 	if err != nil {
 		return err
 	}
+
+	// XXX workaround to prevent comment votes from having the same timestamp
+	time.Sleep(time.Second)
+
+	fmt.Printf("  Comment vote: upvote\n")
+	err = cvc.Execute(nil)
+	if err != nil {
+		return err
+	}
+
+	// XXX workaround to prevent comment votes from having the same timestamp
+	time.Sleep(time.Second)
 
 	fmt.Printf("  Comment vote: downvote\n")
 	cvc.Args.Vote = commentActionDownvote
@@ -1190,6 +1199,7 @@ func testCommentRoutes(admin testUser) error {
 
 	for _, v := range gcr.Comments {
 		if v.CommentID == 1 {
+			fmt.Printf("comment: %+v\n", v)
 			switch {
 			case v.Upvotes != 0:
 				return fmt.Errorf("comment result up votes got %v, want 0",
