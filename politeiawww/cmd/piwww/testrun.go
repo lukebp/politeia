@@ -1030,6 +1030,200 @@ func testProposalRoutes(admin testUser) error {
 	return nil
 }
 
+// testCommentRoutes tests the comment routes
+func testCommentRoutes(admin testUser) error {
+	// Run commment routes.
+	fmt.Printf("Running comment routes\n")
+
+	// Create test user
+	fmt.Printf("Creating test user\n")
+	user, err := createUserAndVerifyEmail(minPasswordLength, false)
+	if err != nil {
+		return err
+	}
+
+	// Submit new proposal
+	token, err := submitNewProposal(false)
+	if err != nil {
+		return err
+	}
+
+	// Login with admin and make the proposal public
+	fmt.Printf("  Login admin\n")
+	err = login(admin)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("  Set proposal status: public\n")
+	const proposalStatusPublic = "public"
+	err = proposalSetStatus(token, proposalStatusPublic, "", true)
+	if err != nil {
+		return err
+	}
+
+	// Log back in with user
+	fmt.Printf("  Login user\n")
+	err = login(*user)
+	if err != nil {
+		return err
+	}
+
+	// New comment - parent
+	fmt.Printf("  New comment: parent\n")
+	ncc := commentNewCmd{}
+	ncc.Args.Token = token
+	ncc.Args.Comment = "this is a comment"
+	ncc.Args.ParentID = "0"
+	err = ncc.Execute(nil)
+	if err != nil {
+		return err
+	}
+
+	// New comment - reply
+	fmt.Printf("  New comment: reply\n")
+	ncc.Args.Token = token
+	ncc.Args.Comment = "this is a comment reply"
+	ncc.Args.ParentID = "1"
+	err = ncc.Execute(nil)
+	if err != nil {
+		return err
+	}
+
+	// Validate comments
+	fmt.Printf("  Proposal details\n")
+	propReq := pi.ProposalRequest{
+		Token: token,
+	}
+	pdr, err := client.Proposals(pi.Proposals{
+		State:        pi.PropStateVetted,
+		Requests:     []pi.ProposalRequest{propReq},
+		IncludeFiles: false,
+	})
+	if err != nil {
+		return err
+	}
+	prop := pdr.Proposals[token]
+	if prop.Comments != 2 {
+		return fmt.Errorf("proposal num comments got %v, want 2",
+			prop.Comments)
+	}
+
+	fmt.Printf("  Proposal comments\n")
+	gcr, err := client.Comments(pi.Comments{
+		Token: token,
+		State: pi.PropStateVetted,
+	})
+	if err != nil {
+		return fmt.Errorf("Comments: %v", err)
+	}
+
+	if len(gcr.Comments) != 2 {
+		return fmt.Errorf("num comments got %v, want 2",
+			len(gcr.Comments))
+	}
+
+	for _, v := range gcr.Comments {
+		// We check the userID because userIDs are not part of
+		// the politeiad comment record. UserIDs are stored in
+		// in politeiawww and are added to the comments at the
+		// time of the request. This introduces the potential
+		// for errors.
+		if v.UserID != user.ID {
+			return fmt.Errorf("comment userID got %v, want %v",
+				v.UserID, user.ID)
+		}
+	}
+
+	// Login with admin to be able to vote on user's comments
+	fmt.Printf("  Login admin\n")
+	err = login(admin)
+	if err != nil {
+		return err
+	}
+
+	// Comment vote sequence
+	const (
+		// Comment actions
+		commentActionUpvote   = "upvote"
+		commentActionDownvote = "downvote"
+	)
+	cvc := commentVoteCmd{}
+	cvc.Args.Token = token
+	cvc.Args.CommentID = "1"
+	cvc.Args.Vote = commentActionUpvote
+
+	fmt.Printf("  Comment vote: upvote\n")
+	err = cvc.Execute(nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("  Comment vote: upvote\n")
+	err = cvc.Execute(nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("  Comment vote: upvote\n")
+	err = cvc.Execute(nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("  Comment vote: downvote\n")
+	cvc.Args.Vote = commentActionDownvote
+	err = cvc.Execute(nil)
+	if err != nil {
+		return err
+	}
+
+	// Validate comment votes
+	fmt.Printf("  Proposal comments\n")
+	gcr, err = client.Comments(pi.Comments{
+		Token: token,
+		State: pi.PropStateVetted,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, v := range gcr.Comments {
+		if v.CommentID == 1 {
+			switch {
+			case v.Upvotes != 0:
+				return fmt.Errorf("comment result up votes got %v, want 0",
+					v.Upvotes)
+			case v.Downvotes != 1:
+				return fmt.Errorf("comment result down votes got %v, want 1",
+					v.Downvotes)
+			}
+		}
+	}
+
+	fmt.Printf("  User comment votes\n")
+	cvr, err := client.CommentVotes(pi.CommentVotes{
+		State:  pi.PropStateVetted,
+		Token:  token,
+		UserID: user.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case len(cvr.Votes) != 1:
+		return fmt.Errorf("user comment votes got %v, want 1",
+			len(cvr.Votes))
+
+	case cvr.Votes[0].Vote != pi.CommentVoteDownvote:
+		return fmt.Errorf("user like comment action got %v, want %v",
+			cvr.Votes[0].Vote, pi.CommentVoteDownvote)
+	}
+
+	return nil
+}
+
 // Execute executes the test run command.
 func (cmd *testRunCmd) Execute(args []string) error {
 	// Suppress output from cli commands
@@ -1105,6 +1299,11 @@ func (cmd *testRunCmd) Execute(args []string) error {
 	}
 
 	fmt.Printf("Test run successful!\n")
+	// Test comment routes
+	err = testCommentRoutes(admin)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
