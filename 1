@@ -582,17 +582,11 @@ func submitNewProposal() (string, error) {
 
 // proposalSetStatus calls proposal set status command
 func proposalSetStatus(state pi.PropStateT, token, reason string, status pi.PropStatusT) error {
-	// Proposal statuses map
-	propStatuses := map[pi.PropStatusT]string{
-		pi.PropStatusPublic:    "public",
-		pi.PropStatusCensored:  "censored",
-		pi.PropStatusAbandoned: "abandoned",
-	}
 	pssc := proposalStatusSetCmd{
 		Unvetted: state == pi.PropStateUnvetted,
 	}
 	pssc.Args.Token = token
-	pssc.Args.Status = propStatuses[status]
+	pssc.Args.Status = status
 	pssc.Args.Reason = reason
 	err := pssc.Execute(nil)
 	if err != nil {
@@ -603,6 +597,7 @@ func proposalSetStatus(state pi.PropStateT, token, reason string, status pi.Prop
 
 // proposalCensor censors given proposal
 func proposalCensor(state pi.PropStateT, token, reason string) error {
+	const proposalStatusCensored = "censored"
 	err := proposalSetStatus(state, token, reason, pi.PropStatusCensored)
 	if err != nil {
 		return err
@@ -612,6 +607,7 @@ func proposalCensor(state pi.PropStateT, token, reason string) error {
 
 // proposalPublic makes given proposal public
 func proposalPublic(token string) error {
+	const proposalStatusPublic = "public"
 	err := proposalSetStatus(pi.PropStateUnvetted, token, "", pi.PropStatusPublic)
 	if err != nil {
 		return err
@@ -621,6 +617,7 @@ func proposalPublic(token string) error {
 
 // proposalAbandon abandons given proposal
 func proposalAbandon(token, reason string) error {
+	const proposalStatusAbandoned = "abandoned"
 	err := proposalSetStatus(pi.PropStateVetted, token, reason,
 		pi.PropStatusAbandoned)
 	if err != nil {
@@ -651,8 +648,9 @@ func proposals(ps pi.Proposals) (map[string]pi.ProposalRecord, error) {
 	}
 
 	if len(psr.Proposals) != len(ps.Requests) {
-		return nil, fmt.Errorf("Received wrong number of proposals: want %v,"+
-			" got %v", len(ps.Requests), len(psr.Proposals))
+		return nil, fmt.Errorf("Received wrong number of proposals: want %v," +
+		 " got %v",
+			len(ps.Requests), len(psr.Proposals))
 	}
 	return psr.Proposals, nil
 }
@@ -717,7 +715,7 @@ func testProposalRoutes(admin testUser) error {
 	// Censor unvetted proposal
 	fmt.Printf("  Censor unvetted proposal\n")
 	const reason = "because!"
-	err = proposalCensor(pi.PropStateUnvetted, censoredToken1, reason)
+	err = proposalCensor(censoredToken1, reason, true)
 	if err != nil {
 		return err
 	}
@@ -771,7 +769,7 @@ func testProposalRoutes(admin testUser) error {
 
 	// Censor public proposal
 	fmt.Printf("  Censor public proposal\n")
-	err = proposalCensor(pi.PropStateVetted, censoredToken2, reason)
+	err = proposalCensor(censoredToken2, reason, false)
 	if err != nil {
 		return err
 	}
