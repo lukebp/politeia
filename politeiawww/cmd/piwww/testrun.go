@@ -120,77 +120,42 @@ func userManage(userID, action, reason string) error {
 	return nil
 }
 
-// createUserAndVerifyEmail creates new user, tries to resend email verification
-// if resendEmail flag is true, verfies user's email, logs in as the newly
-// created user and finally returns the created testUser
-func createUserAndVerifyEmail(minPasswordLength int, resendEmail bool) (*testUser, error) {
-	// Create user and verify email
-	randomStr, err := randomString(minPasswordLength)
-	if err != nil {
-		return nil, err
-	}
-	email := randomStr + "@example.com"
-	username := randomStr
-	password := randomStr
-	id, vt, err := userNew(email, password, username)
-	if err != nil {
-		return nil, err
-	}
-
-	var rvr *www.ResendVerificationReply
-	if resendEmail {
-		// Resed email verification
-		fmt.Printf("  Resend email Verification\n")
-		rvr, err = client.ResendVerification(www.ResendVerification{
-			PublicKey: hex.EncodeToString(id.Public.Key[:]),
-			Email:     email,
-		})
-		if err != nil {
-			return nil, err
-		}
-		vt = rvr.VerificationToken
-	}
-
-	// Verify email
+// userEmailVerify verifies user's email
+func userEmailVerify(vt, email string, id *identity.FullIdentity) error {
 	fmt.Printf("  Verify user's email\n")
 	sig := id.SignMessage([]byte(vt))
-	_, err = client.VerifyNewUser(
+	_, err := client.VerifyNewUser(
 		&www.VerifyNewUser{
 			Email:             email,
 			VerificationToken: vt,
 			Signature:         hex.EncodeToString(sig[:]),
 		})
 	if err != nil {
-		return nil, err
+		return err
 	}
+	return nil
+}
 
-	// Login and store user details
-	fmt.Printf("  Login user\n")
-	lr, err := client.Login(&www.Login{
-		Email:    email,
-		Password: shared.DigestSHA3(password),
-	})
+// createUser creates new user & returns the created testUser
+func userCreate() (*testUser, *identity.FullIdentity, string, error) {
+	// Create user and verify email
+	randomStr, err := randomString(minPasswordLength)
 	if err != nil {
-		return nil, err
+		return nil, nil, "", err
 	}
-
-	// Update user key
-	fmt.Printf("  Update user key\n")
-	ukuc := shared.UserKeyUpdateCmd{}
-	err = ukuc.Execute(nil)
+	email := randomStr + "@example.com"
+	username := randomStr
+	password := randomStr
+	id, vt, err := userNew(email, password, username)
 	if err != nil {
-		return nil, err
+		return nil, nil, "", err
 	}
 
 	return &testUser{
-		ID:             lr.UserID,
-		Email:          email,
-		Username:       username,
-		Password:       password,
-		PublicKey:      lr.PublicKey,
-		PaywallAddress: lr.PaywallAddress,
-		PaywallAmount:  lr.PaywallAmount,
-	}, nil
+		Email:    email,
+		Username: username,
+		Password: password,
+	}, id, vt, nil
 }
 
 // testUser tests piwww user specific routes.
@@ -215,8 +180,45 @@ func testUserRoutes(admin testUser) error {
 	// Run user routes.
 	fmt.Printf("Running user routes\n")
 
-	// Create new user, resend verification email then verify email
-	user, err := createUserAndVerifyEmail(minPasswordLength, true)
+	// Create new user
+	user, id, _, err := userCreate()
+	if err != nil {
+		return err
+	}
+
+	// Resed email verification
+	fmt.Printf("  Resend email Verification\n")
+	rvr, err := client.ResendVerification(www.ResendVerification{
+		PublicKey: hex.EncodeToString(id.Public.Key[:]),
+		Email:     user.Email,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Verify email
+	err = userEmailVerify(rvr.VerificationToken, user.Email, id)
+	if err != nil {
+		return err
+	}
+
+	// Login and store user details
+	fmt.Printf("  Login user\n")
+	lr, err := client.Login(&www.Login{
+		Email:    user.Email,
+		Password: shared.DigestSHA3(user.Password),
+	})
+	if err != nil {
+		return err
+	}
+
+	user.PublicKey = lr.PublicKey
+	user.PaywallAddress = lr.PaywallAddress
+	user.ID = lr.UserID
+	user.PaywallAmount = lr.PaywallAmount
+
+	// Update user key
+	err = userKeyUpdate()
 	if err != nil {
 		return err
 	}
@@ -547,9 +549,8 @@ func proposalNew(rfp bool, linkto string) (*pi.ProposalNew, error) {
 	}, nil
 }
 
-// submitNewPropsal submits new proposal and verifies it if given verify bool
-// is true
-func submitNewProposal(verify bool) (string, error) {
+// submitNewPropsal submits new proposal and verifies it
+func submitNewProposal() (string, error) {
 	fmt.Printf("  New proposal\n")
 	pn, err := proposalNewNormal()
 	if err != nil {
@@ -568,12 +569,9 @@ func submitNewProposal(verify bool) (string, error) {
 		Signature:        pn.Signature,
 		CensorshipRecord: pnr.CensorshipRecord,
 	}
-
-	if verify {
-		err = verifyProposal(*pr, publicKey)
-		if err != nil {
-			return "", fmt.Errorf("verify proposal failed: %v", err)
-		}
+	err = verifyProposal(*pr, publicKey)
+	if err != nil {
+		return "", fmt.Errorf("verify proposal failed: %v", err)
 	}
 
 	token := pr.CensorshipRecord.Token
@@ -628,10 +626,10 @@ func proposalAbandon(token, reason string) error {
 }
 
 // proposalEdit edits given proposal
-func proposalEdit(token string, unvetted, random bool) error {
+func proposalEdit(state pi.PropStateT, token string) error {
 	epc := proposalEditCmd{
-		Random:   random,
-		Unvetted: unvetted,
+		Random:   true,
+		Unvetted: state == pi.PropStateUnvetted,
 	}
 	epc.Args.Token = token
 	err := epc.Execute(nil)
@@ -642,17 +640,24 @@ func proposalEdit(token string, unvetted, random bool) error {
 }
 
 // proposals fetchs requested proposals and verifies returned map length
-func proposals(ps pi.Proposals) error {
+func proposals(ps pi.Proposals) (map[string]pi.ProposalRecord, error) {
 	psr, err := client.Proposals(ps)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if len(psr.Proposals) != len(ps.Requests) {
-		return fmt.Errorf("Received wrong number of proposals: want %v, got %v",
+		return nil, fmt.Errorf("Received wrong number of proposals: want %v, got %v",
 			len(ps.Requests), len(psr.Proposals))
 	}
-	return nil
+	return psr.Proposals, nil
+}
+
+// userKeyUpdate updates user's key
+func userKeyUpdate() error {
+	fmt.Printf("  Update user key\n")
+	ukuc := shared.UserKeyUpdateCmd{}
+	return ukuc.Execute(nil)
 }
 
 // testProposalRoutes tests the propsal routes
@@ -662,20 +667,38 @@ func testProposalRoutes(admin testUser) error {
 
 	// Create test user
 	fmt.Printf("Creating test user\n")
-	user, err := createUserAndVerifyEmail(minPasswordLength, false)
+	user, id, vt, err := userCreate()
 	if err != nil {
 		return err
 	}
 
-	// Submit new proposal & verify
-	censoredToken1, err := submitNewProposal(true)
+	// Verify email
+	err = userEmailVerify(vt, user.Email, id)
+	if err != nil {
+		return err
+	}
+
+	// Login user
+	err = login(*user)
+	if err != nil {
+		return err
+	}
+
+	// Update user key
+	err = userKeyUpdate()
+	if err != nil {
+		return err
+	}
+
+	// Submit new proposal
+	censoredToken1, err := submitNewProposal()
 	if err != nil {
 		return err
 	}
 
 	// Edit unvetted proposal
 	fmt.Printf("  Edit unvetted proposal\n")
-	err = proposalEdit(censoredToken1, true, true)
+	err = proposalEdit(pi.PropStateUnvetted, censoredToken1)
 	if err != nil {
 		return err
 	}
@@ -702,8 +725,8 @@ func testProposalRoutes(admin testUser) error {
 		return err
 	}
 
-	// Submit new proposal & verify
-	censoredToken2, err := submitNewProposal(true)
+	// Submit new proposal
+	censoredToken2, err := submitNewProposal()
 	if err != nil {
 		return err
 	}
@@ -730,7 +753,7 @@ func testProposalRoutes(admin testUser) error {
 
 	// Edit vetted proposal
 	fmt.Printf("  Edit vetted proposal\n")
-	err = proposalEdit(censoredToken2, false, true)
+	err = proposalEdit(pi.PropStateVetted, censoredToken2)
 	if err != nil {
 		return err
 	}
@@ -756,8 +779,8 @@ func testProposalRoutes(admin testUser) error {
 		return err
 	}
 
-	// Submit new proposal & verify
-	abandonedToken, err := submitNewProposal(true)
+	// Submit new proposal
+	abandonedToken, err := submitNewProposal()
 	if err != nil {
 		return err
 	}
@@ -790,13 +813,13 @@ func testProposalRoutes(admin testUser) error {
 	}
 
 	// Submit new proposal and leave it unvetted
-	unvettedToken, err := submitNewProposal(true)
+	unvettedToken, err := submitNewProposal()
 	if err != nil {
 		return err
 	}
 
 	// Submit new proposal and make it public
-	publicToken, err := submitNewProposal(true)
+	publicToken, err := submitNewProposal()
 	if err != nil {
 		return err
 	}
@@ -864,7 +887,7 @@ func testProposalRoutes(admin testUser) error {
 
 	// Get vetted proposals
 	fmt.Printf("  Fetch vetted proposals\n")
-	err = proposals(pi.Proposals{
+	props, err := proposals(pi.Proposals{
 		State: pi.PropStateVetted,
 		Requests: []pi.ProposalRequest{
 			{
@@ -878,10 +901,15 @@ func testProposalRoutes(admin testUser) error {
 	if err != nil {
 		return err
 	}
+	_, publicExists = props[publicToken]
+	_, abandonedExists = props[abandonedToken]
+	if !publicExists || !abandonedExists {
+		return fmt.Errorf("Proposal batch missing requested vetted proposals")
+	}
 
 	// Get unvetted proposal
 	fmt.Printf("  Fetch vetted proposals\n")
-	err = proposals(pi.Proposals{
+	props, err = proposals(pi.Proposals{
 		State: pi.PropStateUnvetted,
 		Requests: []pi.ProposalRequest{
 			{
@@ -891,6 +919,10 @@ func testProposalRoutes(admin testUser) error {
 	})
 	if err != nil {
 		return err
+	}
+	_, unvettedExists = props[unvettedToken]
+	if !unvettedExists {
+		return fmt.Errorf("Proposal batch missing requested unvetted proposals")
 	}
 
 	// Logout
