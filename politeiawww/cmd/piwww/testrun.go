@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/decred/politeia/politeiad/api/v1/identity"
@@ -582,17 +583,11 @@ func submitNewProposal() (string, error) {
 
 // proposalSetStatus calls proposal set status command
 func proposalSetStatus(state pi.PropStateT, token, reason string, status pi.PropStatusT) error {
-	// Proposal statuses map
-	propStatuses := map[pi.PropStatusT]string{
-		pi.PropStatusPublic:    "public",
-		pi.PropStatusCensored:  "censored",
-		pi.PropStatusAbandoned: "abandoned",
-	}
 	pssc := proposalStatusSetCmd{
 		Unvetted: state == pi.PropStateUnvetted,
 	}
 	pssc.Args.Token = token
-	pssc.Args.Status = propStatuses[status]
+	pssc.Args.Status = strconv.Itoa(int(status))
 	pssc.Args.Reason = reason
 	err := pssc.Execute(nil)
 	if err != nil {
