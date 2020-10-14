@@ -135,7 +135,7 @@ func userEmailVerify(vt, email string, id *identity.FullIdentity) error {
 	return nil
 }
 
-// createUser creates new user & returns the created testUser
+// userCreate creates new user & returns the created testUser
 func userCreate() (*testUser, *identity.FullIdentity, string, error) {
 	// Create user and verify email
 	randomStr, err := randomString(minPasswordLength)
@@ -216,15 +216,15 @@ func testUserRoutes(admin testUser) error {
 	user.ID = lr.UserID
 	user.PaywallAmount = lr.PaywallAmount
 
-	// Update user key
-	err = userKeyUpdate()
+	// Logout user
+	fmt.Printf("  Logout user\n")
+	err = logout()
 	if err != nil {
 		return err
 	}
 
-	// Logout user
-	fmt.Printf("  Logout user\n")
-	err = logout()
+	// Update user key
+	err = userKeyUpdate(*user)
 	if err != nil {
 		return err
 	}
@@ -682,10 +682,23 @@ func proposals(user testUser, ps pi.Proposals) (map[string]pi.ProposalRecord, er
 }
 
 // userKeyUpdate updates user's key
-func userKeyUpdate() error {
+//
+// This function returns with the user logged out
+func userKeyUpdate(user testUser) error {
+	// Login user
+	err := login(user)
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("  Update user key\n")
 	ukuc := shared.UserKeyUpdateCmd{}
-	return ukuc.Execute(nil)
+	err = ukuc.Execute(nil)
+	if err != nil {
+		return err
+	}
+
+	return logout()
 }
 
 // testProposalRoutes tests the propsal routes
@@ -706,14 +719,8 @@ func testProposalRoutes(admin testUser) error {
 		return err
 	}
 
-	// Login user
-	err = login(*user)
-	if err != nil {
-		return err
-	}
-
 	// Update user key
-	err = userKeyUpdate()
+	err = userKeyUpdate(*user)
 	if err != nil {
 		return err
 	}
