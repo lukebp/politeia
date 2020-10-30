@@ -844,7 +844,20 @@ func testProposalRoutes(admin testUser) error {
 	}
 
 	// Ensure vetted censored proposal token received
-	// XXX test unvetted censored
+	vettedCensored, ok := vettedProps["censored"]
+	if !ok {
+		return fmt.Errorf("No vetted censrored proposals returned")
+	}
+	for _, t := range vettedCensored {
+		if t == censoredToken2 {
+			censoredExists = true
+		}
+	}
+	if !censoredExists {
+		return fmt.Errorf("Proposal inventory missing vetted censored proposal"+
+			": %v",
+			censoredToken1)
+	}
 
 	// Ensure abandoned proposal token received
 	abandonedProps, ok := vettedProps["abandoned"]
@@ -879,9 +892,10 @@ func testProposalRoutes(admin testUser) error {
 			unvettedToken)
 	}
 
+	// Ensure unvetted censored proposal token received
 	unvettedCensored, ok := unvettedProps["censored"]
 	if !ok {
-		return fmt.Errorf("No vetted censrored proposals returned")
+		return fmt.Errorf("No unvetted censrored proposals returned")
 	}
 	for _, t := range unvettedCensored {
 		if t == censoredToken1 {
