@@ -552,7 +552,7 @@ func submitNewProposal(user testUser) (string, error) {
 		Metadata:         pn.Metadata,
 		PublicKey:        pn.PublicKey,
 		Signature:        pn.Signature,
-		CensorshipRecord: pnr.CensorshipRecord,
+		CensorshipRecord: pnr.Proposal.CensorshipRecord,
 	}
 	err = verifyProposal(*pr, publicKey)
 	if err != nil {
@@ -821,12 +821,19 @@ func testProposalRoutes(admin testUser) error {
 	// Proposal inventory
 	var publicExists, censoredExists, abandonedExists, unvettedExists bool
 	fmt.Printf("  Proposal inventory\n")
-	pir, err := client.ProposalInventory()
+	pir, err := client.ProposalInventory(pi.ProposalInventory{})
 	if err != nil {
 		return err
 	}
+	// Vetted proposals map
+	vettedProps := pir.Vetted
+
 	// Ensure public proposal token received
-	for _, t := range pir.Public {
+	publicProps, ok := vettedProps["public"]
+	if !ok {
+		return fmt.Errorf("No public proposals returned")
+	}
+	for _, t := range publicProps {
 		if t == publicToken {
 			publicExists = true
 		}
@@ -835,18 +842,16 @@ func testProposalRoutes(admin testUser) error {
 		return fmt.Errorf("Proposal inventory missing public proposal: %v",
 			publicToken)
 	}
-	// Ensure censored proposal token received
-	for _, t := range pir.Censored {
-		if t == censoredToken1 {
-			censoredExists = true
-		}
-	}
-	if !censoredExists {
-		return fmt.Errorf("Proposal inventory missing censored proposal: %v",
-			censoredToken1)
-	}
+
+	// Ensure vetted censored proposal token received
+	// XXX test unvetted censored
+
 	// Ensure abandoned proposal token received
-	for _, t := range pir.Abandoned {
+	abandonedProps, ok := vettedProps["abandoned"]
+	if !ok {
+		return fmt.Errorf("No abandoned proposals returned")
+	}
+	for _, t := range abandonedProps {
 		if t == abandonedToken {
 			abandonedExists = true
 		}
@@ -855,8 +860,16 @@ func testProposalRoutes(admin testUser) error {
 		return fmt.Errorf("Proposal inventory missing abandoned proposal: %v",
 			abandonedToken)
 	}
+
+	// Unvetted propsoals
+	unvettedProps := pir.Unvetted
+
 	// Ensure unvetted proposal token received
-	for _, t := range pir.Unvetted {
+	unreviewedProps, ok := unvettedProps["unreviewed"]
+	if !ok {
+		return fmt.Errorf("No unreviewed proposals returned")
+	}
+	for _, t := range unreviewedProps {
 		if t == unvettedToken {
 			unvettedExists = true
 		}
@@ -864,6 +877,21 @@ func testProposalRoutes(admin testUser) error {
 	if !unvettedExists {
 		return fmt.Errorf("Proposal inventory missing unvetted proposal: %v",
 			unvettedToken)
+	}
+
+	unvettedCensored, ok := unvettedProps["censored"]
+	if !ok {
+		return fmt.Errorf("No vetted censrored proposals returned")
+	}
+	for _, t := range unvettedCensored {
+		if t == censoredToken1 {
+			censoredExists = true
+		}
+	}
+	if !censoredExists {
+		return fmt.Errorf("Proposal inventory missing unvetted censored proposal"+
+			": %v",
+			censoredToken1)
 	}
 
 	// Get vetted proposals
