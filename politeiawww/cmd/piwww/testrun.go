@@ -930,13 +930,56 @@ func testProposalRoutes(admin testUser) error {
 		return fmt.Errorf("Proposal batch missing requested vetted proposals")
 	}
 
+	// Get vetted proposals with short tokens
+	fmt.Printf("  Fetch vetted proposals with short tokens\n")
+	shortPublicToken := publicToken[0:7]
+	shortAbandonedToken := abandonedToken[0:7]
+	props, err = proposals(*user, pi.Proposals{
+		State: pi.PropStateVetted,
+		Requests: []pi.ProposalRequest{
+			{
+				Token: shortPublicToken,
+			},
+			{
+				Token: shortAbandonedToken,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	_, publicExists = props[publicToken]
+	_, abandonedExists = props[abandonedToken]
+	if !publicExists || !abandonedExists {
+		return fmt.Errorf("Proposal batch missing requested vetted proposals")
+	}
+
 	// Get unvetted proposal
-	fmt.Printf("  Fetch vetted proposals\n")
+	fmt.Printf("  Fetch unvetted proposal\n")
 	props, err = proposals(*user, pi.Proposals{
 		State: pi.PropStateUnvetted,
 		Requests: []pi.ProposalRequest{
 			{
 				Token: unvettedToken,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	_, unvettedExists = props[unvettedToken]
+	if !unvettedExists {
+		return fmt.Errorf("Proposal batch missing requested unvetted proposals")
+	}
+
+	// Get unvetted proposal with short token
+	fmt.Printf("  Fetch unvetted proposal with short token\n")
+	shortUnvettedToken := unvettedToken[0:7]
+	props, err = proposals(*user, pi.Proposals{
+		State: pi.PropStateUnvetted,
+		Requests: []pi.ProposalRequest{
+			{
+				Token: shortUnvettedToken,
 			},
 		},
 	})
@@ -1025,6 +1068,7 @@ func (cmd *testRunCmd) Execute(args []string) error {
 		return err
 	}
 
+	fmt.Printf("Test run successful!\n")
 	return nil
 }
 
