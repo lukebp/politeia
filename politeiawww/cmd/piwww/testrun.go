@@ -829,7 +829,7 @@ func testProposalRoutes(admin testUser) error {
 	vettedProps := pir.Vetted
 
 	// Ensure public proposal token received
-	publicProps, ok := vettedProps["public"]
+	publicProps, ok := vettedProps[pi.PropStatus[pi.PropStatusPublic]]
 	if !ok {
 		return fmt.Errorf("No public proposals returned")
 	}
@@ -844,7 +844,7 @@ func testProposalRoutes(admin testUser) error {
 	}
 
 	// Ensure vetted censored proposal token received
-	vettedCensored, ok := vettedProps["censored"]
+	vettedCensored, ok := vettedProps[pi.PropStatus[pi.PropStatusCensored]]
 	if !ok {
 		return fmt.Errorf("No vetted censrored proposals returned")
 	}
@@ -860,7 +860,7 @@ func testProposalRoutes(admin testUser) error {
 	}
 
 	// Ensure abandoned proposal token received
-	abandonedProps, ok := vettedProps["abandoned"]
+	abandonedProps, ok := vettedProps[pi.PropStatus[pi.PropStatusAbandoned]]
 	if !ok {
 		return fmt.Errorf("No abandoned proposals returned")
 	}
@@ -878,7 +878,7 @@ func testProposalRoutes(admin testUser) error {
 	unvettedProps := pir.Unvetted
 
 	// Ensure unvetted proposal token received
-	unreviewedProps, ok := unvettedProps["unreviewed"]
+	unreviewedProps, ok := unvettedProps[pi.PropStatus[pi.PropStatusUnreviewed]]
 	if !ok {
 		return fmt.Errorf("No unreviewed proposals returned")
 	}
