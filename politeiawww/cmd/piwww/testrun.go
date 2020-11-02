@@ -159,7 +159,7 @@ func userCreate() (*testUser, *identity.FullIdentity, string, error) {
 }
 
 // userDetals accepts a pointer to a testUser calls client's login command
-// and stores addtional information on given testUser struct
+// and stores additional information on given testUser struct
 func userDetails(u *testUser) error {
 	// Login and store user details
 	fmt.Printf("  Login user\n")
@@ -1286,10 +1286,10 @@ func testCommentRoutes(admin testUser) error {
 	}
 
 	// Comment vote sequence
-	const (
+	var (
 		// Comment actions
-		commentActionUpvote   = "upvote"
-		commentActionDownvote = "downvote"
+		commentActionUpvote   = strconv.Itoa(int(pi.CommentVoteUpvote))
+		commentActionDownvote = strconv.Itoa(int(pi.CommentVoteDownvote))
 	)
 	cvc := commentVoteCmd{}
 	cvc.Args.Token = token
