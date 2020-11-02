@@ -5,7 +5,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/hex"
@@ -183,7 +182,7 @@ func testUserRoutes(admin testUser) error {
 	// Create new user
 	user, id, _, err := userCreate()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	// Resed email verification
@@ -209,7 +208,7 @@ func testUserRoutes(admin testUser) error {
 		Password: shared.DigestSHA3(user.Password),
 	})
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	user.PublicKey = lr.PublicKey
@@ -542,13 +541,7 @@ func submitNewProposal(user testUser) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	// Edit unvetted proposal
-	fmt.Printf("  Edit unvetted proposal\n")
-	err = proposalEdit(censoredToken1, true, true)
-	if err != nil {
-		return "", err
-	}
+	pnr, err := client.ProposalNew(*pn)
 
 	// Verify proposal censorship record
 	pr := &pi.ProposalRecord{
@@ -647,10 +640,8 @@ func proposalEdit(user testUser, state pi.PropStateT, token string) error {
 		Random:   true,
 		Unvetted: state == pi.PropStateUnvetted,
 	}
-
-	// Login with admin and make the proposal public
-	fmt.Printf("  Login admin\n")
-	err = login(admin)
+	epc.Args.Token = token
+	err = epc.Execute(nil)
 	if err != nil {
 		return err
 	}
@@ -847,36 +838,6 @@ func testProposalRoutes(admin testUser) error {
 	if !publicExists {
 		return fmt.Errorf("Proposal inventory missing public proposal: %v",
 			publicToken)
-	}
-	// Ensure censored proposal token received
-	for _, t := range pir.Censored {
-		if t == censoredToken1 {
-			censoredExists = true
-		}
-	}
-	if !censoredExists {
-		return fmt.Errorf("Proposal inventory missing censored proposal: %v",
-			censoredToken1)
-	}
-	// Ensure abandoned proposal token received
-	for _, t := range pir.Abandoned {
-		if t == abandonedToken {
-			abandonedExists = true
-		}
-	}
-	if !abandonedExists {
-		return fmt.Errorf("Proposal inventory missing abandoned proposal: %v",
-			abandonedToken)
-	}
-	// Ensure unvetted proposal token received
-	for _, t := range pir.Unvetted {
-		if t == unvettedToken {
-			unvettedExists = true
-		}
-	}
-	if !unvettedExists {
-		return fmt.Errorf("Proposal inventory missing unvetted proposal: %v",
-			unvettedToken)
 	}
 
 	// Ensure vetted censored proposal token received
@@ -1404,12 +1365,14 @@ func (cmd *testRunCmd) Execute(args []string) error {
 		return err
 	}
 
-	fmt.Printf("Test run successful!\n")
 	// Test comment routes
 	err = testCommentRoutes(admin)
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("Test run successful!\n")
+
 	return nil
 }
 
