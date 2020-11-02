@@ -63,7 +63,8 @@ func logout() error {
 	return nil
 }
 
-// userRegistrationPayment ensures current logged in user has paid registration fee
+// userRegistrationPayment ensures current logged in user has paid registration
+// fee
 func userRegistrationPayment() (www.UserRegistrationPaymentReply, error) {
 	urvr, err := client.UserRegistrationPayment()
 	if err != nil {
@@ -157,6 +158,27 @@ func userCreate() (*testUser, *identity.FullIdentity, string, error) {
 	}, id, vt, nil
 }
 
+// userDetals accepts a pointer to a testUser calls client's login command
+// and stores addtional information on given testUser struct
+func userDetails(u *testUser) error {
+	// Login and store user details
+	fmt.Printf("  Login user\n")
+	lr, err := client.Login(&www.Login{
+		Email:    u.Email,
+		Password: shared.DigestSHA3(u.Password),
+	})
+	if err != nil {
+		return err
+	}
+
+	u.PublicKey = lr.PublicKey
+	u.PaywallAddress = lr.PaywallAddress
+	u.ID = lr.UserID
+	u.PaywallAmount = lr.PaywallAmount
+
+	return nil
+}
+
 // testUser tests piwww user specific routes.
 func testUserRoutes(admin testUser) error {
 	// sleepInterval is the time to wait in between requests
@@ -201,20 +223,11 @@ func testUserRoutes(admin testUser) error {
 		return err
 	}
 
-	// Login and store user details
-	fmt.Printf("  Login user\n")
-	lr, err := client.Login(&www.Login{
-		Email:    user.Email,
-		Password: shared.DigestSHA3(user.Password),
-	})
+	// Populate user's details
+	err = userDetails(user)
 	if err != nil {
 		return err
 	}
-
-	user.PublicKey = lr.PublicKey
-	user.PaywallAddress = lr.PaywallAddress
-	user.ID = lr.UserID
-	user.PaywallAmount = lr.PaywallAmount
 
 	// Logout user
 	fmt.Printf("  Logout user\n")
@@ -1014,7 +1027,63 @@ func commentNew(user testUser, state pi.PropStateT, token, comment, parentID str
 	if err != nil {
 		return err
 	}
+
 	return logout()
+}
+
+// verifyCommentSctore accepts array of comments, a commentID and the expected
+// up & down votes and ensures given comment has expected score
+func verifyCommentScore(comments []pi.Comment, commentID uint32, upvotes, downvotes uint64) error {
+	for _, v := range comments {
+		if v.CommentID == commentID {
+			switch {
+			case v.Upvotes != upvotes:
+				return fmt.Errorf("comment result up votes got %v, want %v",
+					v.Upvotes, upvotes)
+			case v.Downvotes != downvotes:
+				return fmt.Errorf("comment result down votes got %v, want %v",
+					v.Downvotes, downvotes)
+			}
+		}
+	}
+
+	return nil
+}
+
+// verifyCommentVotes accepts comment votes array of all user's comment votes
+// on a proposals and a comment id, it verifies the number of the total votes,
+// the number of upvotes and the number of downvotes on given comment
+func verifyCommentVotes(votes []pi.CommentVoteDetails, commentID uint32, totalVotes, upvotes, downvotes int) error {
+	var (
+		uvotes int
+		dvotes int
+		total  int
+	)
+	for _, v := range votes {
+		if v.CommentID == commentID {
+			switch v.Vote {
+			case pi.CommentVoteDownvote:
+				dvotes++
+			case pi.CommentVoteUpvote:
+				uvotes++
+			}
+			total++
+		}
+	}
+	if total != totalVotes {
+		return fmt.Errorf("wrong num of comment votes got %v, want %v",
+			total, totalVotes)
+	}
+	if uvotes != upvotes {
+		return fmt.Errorf("wrong num of upvotes: got %v, want %v",
+			uvotes, upvotes)
+	}
+	if dvotes != downvotes {
+		return fmt.Errorf("wrong num of downvotes: got %v, want %v",
+			dvotes, downvotes)
+	}
+
+	return nil
 }
 
 // testCommentRoutes tests the comment routes
@@ -1037,6 +1106,12 @@ func testCommentRoutes(admin testUser) error {
 
 	// Update user key
 	err = userKeyUpdate(*user)
+	if err != nil {
+		return err
+	}
+
+	// Populate user's info
+	err = userDetails(user)
 	if err != nil {
 		return err
 	}
@@ -1191,15 +1266,15 @@ func testCommentRoutes(admin testUser) error {
 			len(gcr.Comments))
 	}
 
-	for _, v := range gcr.Comments {
+	for _, c := range gcr.Comments {
 		// We check the userID because userIDs are not part of
 		// the politeiad comment record. UserIDs are stored in
 		// in politeiawww and are added to the comments at the
 		// time of the request. This introduces the potential
 		// for errors.
-		if v.UserID != user.ID {
-			return fmt.Errorf("comment userID got %v, want %v",
-				v.UserID, user.ID)
+		if c.UserID != user.ID && c.CommentID == 1 {
+			return fmt.Errorf("comment %v has wrong userID got %v, want %v",
+				c.CommentID, c.UserID, user.ID)
 		}
 	}
 
@@ -1256,7 +1331,7 @@ func testCommentRoutes(admin testUser) error {
 	}
 
 	// Validate comment votes
-	fmt.Printf("  Proposal comments\n")
+	fmt.Printf("  Fetch proposal's comments & verify first comment score\n")
 	gcr, err = client.Comments(pi.Comments{
 		Token: token,
 		State: pi.PropStateVetted,
@@ -1265,38 +1340,57 @@ func testCommentRoutes(admin testUser) error {
 		return err
 	}
 
-	for _, v := range gcr.Comments {
-		if v.CommentID == 1 {
-			fmt.Printf("comment: %+v\n", v)
-			switch {
-			case v.Upvotes != 0:
-				return fmt.Errorf("comment result up votes got %v, want 0",
-					v.Upvotes)
-			case v.Downvotes != 1:
-				return fmt.Errorf("comment result down votes got %v, want 1",
-					v.Downvotes)
-			}
-		}
+	// Verify first comment score
+	err = verifyCommentScore(gcr.Comments, 1, 0, 1)
+	if err != nil {
+		return err
 	}
 
-	fmt.Printf("  User comment votes\n")
-	cvr, err := client.CommentVotes(pi.CommentVotes{
-		State:  pi.PropStateVetted,
-		Token:  token,
-		UserID: user.ID,
+	// Validate comment votes using short token
+	fmt.Printf("  Fetch proposal's comments using short token & verify first " +
+		"comment score\n")
+	gcr, err = client.Comments(pi.Comments{
+		Token: token[0:7],
+		State: pi.PropStateVetted,
 	})
 	if err != nil {
 		return err
 	}
 
-	switch {
-	case len(cvr.Votes) != 1:
-		return fmt.Errorf("user comment votes got %v, want 1",
-			len(cvr.Votes))
+	// Verify first comment score
+	err = verifyCommentScore(gcr.Comments, 1, 0, 1)
+	if err != nil {
+		return err
+	}
 
-	case cvr.Votes[0].Vote != pi.CommentVoteDownvote:
-		return fmt.Errorf("user like comment action got %v, want %v",
-			cvr.Votes[0].Vote, pi.CommentVoteDownvote)
+	fmt.Printf("  Verify admin's comment votes\n")
+	cvr, err := client.CommentVotes(pi.CommentVotes{
+		State:  pi.PropStateVetted,
+		Token:  token,
+		UserID: admin.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = verifyCommentVotes(cvr.Votes, 1, 4, 3, 1)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("  Verify admin's comment votes using short token\n")
+	cvr, err = client.CommentVotes(pi.CommentVotes{
+		State:  pi.PropStateVetted,
+		Token:  token[0:7],
+		UserID: admin.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = verifyCommentVotes(cvr.Votes, 1, 4, 3, 1)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -1345,6 +1439,12 @@ func (cmd *testRunCmd) Execute(args []string) error {
 		Password: cmd.Args.AdminPassword,
 	}
 	err = login(admin)
+	if err != nil {
+		return err
+	}
+
+	// Populate admin's info
+	err = userDetails(&admin)
 	if err != nil {
 		return err
 	}
