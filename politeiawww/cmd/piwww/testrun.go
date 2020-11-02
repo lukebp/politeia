@@ -198,7 +198,7 @@ func testUserRoutes(admin testUser) error {
 	// Verify email
 	err = userEmailVerify(rvr.VerificationToken, user.Email, id)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	// Login and store user details
@@ -542,6 +542,9 @@ func submitNewProposal(user testUser) (string, error) {
 		return "", err
 	}
 	pnr, err := client.ProposalNew(*pn)
+	if err != nil {
+		return "", err
+	}
 
 	// Verify proposal censorship record
 	pr := &pi.ProposalRecord{
@@ -1047,9 +1050,12 @@ func testCommentRoutes(admin testUser) error {
 	// Make proposal public
 	fmt.Printf("  Set proposal status: public\n")
 	err = proposalPublic(admin, token)
+	if err != nil {
+		return err
+	}
 
 	// Abandon proposal
-	reason := "becuase!"
+	reason := "because!"
 	fmt.Printf("  Abandon proposal\n")
 	err = proposalAbandon(admin, token, reason)
 	if err != nil {
@@ -1100,10 +1106,16 @@ func testCommentRoutes(admin testUser) error {
 	// Admin comment on an unvetted proposal
 	fmt.Print("  Admin comment on an unvetted proposal\n")
 	err = commentNew(admin, pi.PropStateUnvetted, token, comment, "0")
+	if err != nil {
+		return err
+	}
 
 	// Make proposal a public
 	fmt.Printf("  Set proposal status: public\n")
 	err = proposalPublic(admin, token)
+	if err != nil {
+		return err
+	}
 
 	// Author comment on a public proposal
 	fmt.Printf("  Author comment on a public proposal\n")
@@ -1138,7 +1150,6 @@ func testCommentRoutes(admin testUser) error {
 		return err
 	}
 
-	// XXXXXXXXXXX grrrrrrrrr
 	// Comment on a public proposal - reply
 	fmt.Printf("  Comment on a public proposal: reply\n")
 	reply := "this is a comment reply"
@@ -1161,8 +1172,8 @@ func testCommentRoutes(admin testUser) error {
 		return err
 	}
 	prop := pdr.Proposals[token]
-	if prop.Comments != 2 {
-		return fmt.Errorf("proposal num comments got %v, want 2",
+	if prop.Comments != 3 {
+		return fmt.Errorf("proposal num comments got %v, want 3",
 			prop.Comments)
 	}
 
@@ -1175,8 +1186,8 @@ func testCommentRoutes(admin testUser) error {
 		return fmt.Errorf("Comments: %v", err)
 	}
 
-	if len(gcr.Comments) != 2 {
-		return fmt.Errorf("num comments got %v, want 2",
+	if len(gcr.Comments) != 3 {
+		return fmt.Errorf("num comments got %v, want 3",
 			len(gcr.Comments))
 	}
 
