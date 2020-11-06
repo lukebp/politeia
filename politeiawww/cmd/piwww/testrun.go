@@ -1034,8 +1034,10 @@ func commentNew(user testUser, state pi.PropStateT, token, comment, parentID str
 // verifyCommentSctore accepts array of comments, a commentID and the expected
 // up & down votes and ensures given comment has expected score
 func verifyCommentScore(comments []pi.Comment, commentID uint32, upvotes, downvotes uint64) error {
+	var commentExists bool
 	for _, v := range comments {
 		if v.CommentID == commentID {
+			commentExists = true
 			switch {
 			case v.Upvotes != upvotes:
 				return fmt.Errorf("comment result up votes got %v, want %v",
@@ -1046,6 +1048,9 @@ func verifyCommentScore(comments []pi.Comment, commentID uint32, upvotes, downvo
 			}
 		}
 	}
+	if !commentExists {
+		return fmt.Errorf("comment not found: %v", commentID)
+	}
 
 	return nil
 }
@@ -1055,12 +1060,14 @@ func verifyCommentScore(comments []pi.Comment, commentID uint32, upvotes, downvo
 // the number of upvotes and the number of downvotes on given comment
 func verifyCommentVotes(votes []pi.CommentVoteDetails, commentID uint32, totalVotes, upvotes, downvotes int) error {
 	var (
-		uvotes int
-		dvotes int
-		total  int
+		uvotes        int
+		dvotes        int
+		total         int
+		commentExists bool
 	)
 	for _, v := range votes {
 		if v.CommentID == commentID {
+			commentExists = true
 			switch v.Vote {
 			case pi.CommentVoteDownvote:
 				dvotes++
@@ -1069,6 +1076,9 @@ func verifyCommentVotes(votes []pi.CommentVoteDetails, commentID uint32, totalVo
 			}
 			total++
 		}
+	}
+	if !commentExists {
+		return fmt.Errorf("comment not found: %v", commentID)
 	}
 	if total != totalVotes {
 		return fmt.Errorf("wrong num of comment votes got %v, want %v",
