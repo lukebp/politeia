@@ -1506,18 +1506,6 @@ func (p *commentsPlugin) cmdGetAll(payload string) (string, error) {
 		}
 	}
 
-	if len(token) == tokenPrefixSize() {
-		// This is a token prefix. Get the full token from the cache.
-		var ok bool
-		token, ok = p.tlog.fullLengthToken(token)
-		if !ok {
-			return "", backend.PluginUserError{
-				PluginID:  comments.ID,
-				ErrorCode: int(comments.ErrorStatusTokenInvalid),
-			}
-		}
-	}
-
 	// Get comments index
 	idx, err := p.commentsIndex(ga.State, token)
 	if err != nil {
@@ -1725,18 +1713,6 @@ func (p *commentsPlugin) cmdVotes(payload string) (string, error) {
 		return "", backend.PluginUserError{
 			PluginID:  comments.ID,
 			ErrorCode: int(comments.ErrorStatusTokenInvalid),
-		}
-	}
-
-	if len(token) == tokenPrefixSize() {
-		// This is a token prefix. Get the full token from the cache.
-		var ok bool
-		token, ok = p.tlog.fullLengthToken(token)
-		if !ok {
-			return "", backend.PluginUserError{
-				PluginID:  comments.ID,
-				ErrorCode: int(comments.ErrorStatusTokenInvalid),
-			}
 		}
 	}
 
