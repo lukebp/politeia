@@ -6,6 +6,9 @@ package tlogbe
 
 import (
 	"fmt"
+
+	"github.com/decred/politeia/politeiad/backend"
+	"github.com/decred/politeia/politeiad/plugins/comments"
 )
 
 // TODO verify writes only accept full length tokens
@@ -69,6 +72,18 @@ func (c *backendClient) tlogByID(tlogID string) (*tlog, error) {
 // treeIDFromToken returns the treeID for the provided tlog instance ID and
 // token.
 func (c *backendClient) treeIDFromToken(tlogID string, token []byte) (int64, error) {
+	if len(token) == tokenPrefixSize() {
+		// This is a token prefix. Get the full token from the cache.
+		var ok bool
+		token, ok = c.backend.fullLengthToken(token)
+		if !ok {
+			return 0, backend.PluginUserError{
+				PluginID:  comments.ID,
+				ErrorCode: int(comments.ErrorStatusTokenInvalid),
+			}
+		}
+	}
+
 	switch tlogID {
 	case tlogIDUnvetted:
 		return treeIDFromToken(token), nil
@@ -137,6 +152,18 @@ func (c *backendClient) blobsByMerkle(tlogID string, token []byte, merkles [][]b
 	tlog, err := c.tlogByID(tlogID)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(token) == tokenPrefixSize() {
+		// This is a token prefix. Get the full token from the cache.
+		var ok bool
+		token, ok = c.backend.fullLengthToken(token)
+		if !ok {
+			return nil, backend.PluginUserError{
+				PluginID:  comments.ID,
+				ErrorCode: int(comments.ErrorStatusTokenInvalid),
+			}
+		}
 	}
 
 	// Get tree ID

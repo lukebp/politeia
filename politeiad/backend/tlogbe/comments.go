@@ -121,7 +121,11 @@ func (p *commentsPlugin) mutex(token string) *sync.Mutex {
 	return m
 }
 
+// commentsIndexPath accepts full length token or token prefix but always
+// uses prefix when generating the comments index path string.
 func (p *commentsPlugin) commentsIndexPath(s comments.StateT, token string) string {
+	// Use token prefix
+	token = tokenPrefix([]byte(token))
 	fn := filenameCommentsIndex
 	switch s {
 	case comments.StateUnvetted:
