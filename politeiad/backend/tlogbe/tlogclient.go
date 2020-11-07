@@ -34,6 +34,9 @@ type tlogClient interface {
 	// prefix.
 	blobsByKeyPrefix(tlogID string, token []byte,
 		keyPrefix string) ([][]byte, error)
+
+	// fullLengthToken returns the full length token given the token prefix.
+	fullLengthToken(prefix []byte) ([]byte, bool)
 }
 
 var (
@@ -43,6 +46,13 @@ var (
 // backendClient implements the tlogClient interface.
 type backendClient struct {
 	backend *tlogBackend
+}
+
+// fullLengthToken returns the full length token given the token prefix.
+func (c *backendClient) fullLengthToken(prefix []byte) ([]byte, bool) {
+	log.Tracef("tlogClient fullLengthToken: %x", prefix)
+
+	return c.backend.fullLengthToken(prefix)
 }
 
 // tlogByID returns the tlog instance that corresponds to the provided ID.
