@@ -1751,6 +1751,12 @@ func (p *commentsPlugin) cmdVotes(payload string) (string, error) {
 	// Lookup votes
 	votes, err := p.commentVotes(v.State, token, merkles)
 	if err != nil {
+		if errors.Is(err, errRecordNotFound) {
+			return "", backend.PluginUserError{
+				PluginID:  comments.ID,
+				ErrorCode: int(comments.ErrorStatusRecordNotFound),
+			}
+		}
 		return "", fmt.Errorf("commentVotes: %v", err)
 	}
 

@@ -2220,7 +2220,10 @@ func (p *ticketVotePlugin) cmdDetails(payload string) (string, error) {
 		auths, err := p.authorizes(token)
 		if err != nil {
 			if errors.Is(err, errRecordNotFound) {
-				continue
+				return "", backend.PluginUserError{
+					PluginID:  ticketvote.ID,
+					ErrorCode: int(ticketvote.ErrorStatusRecordNotFound),
+				}
 			}
 			return "", fmt.Errorf("authorizes: %v", err)
 		}
@@ -2271,6 +2274,12 @@ func (p *ticketVotePlugin) cmdResults(payload string) (string, error) {
 	// Get cast votes
 	votes, err := p.castVotes(token)
 	if err != nil {
+		if errors.Is(err, errRecordNotFound) {
+			return "", backend.PluginUserError{
+				PluginID:  ticketvote.ID,
+				ErrorCode: int(ticketvote.ErrorStatusRecordNotFound),
+			}
+		}
 		return "", err
 	}
 
@@ -2363,6 +2372,9 @@ func (p *ticketVotePlugin) summary(token []byte, bestBlock uint32) (*ticketvote.
 	// Check if the vote has been authorized
 	auths, err := p.authorizes(token)
 	if err != nil {
+		if errors.Is(err, errRecordNotFound) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("authorizes: %v", err)
 	}
 	if len(auths) > 0 {
