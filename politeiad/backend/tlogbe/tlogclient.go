@@ -144,18 +144,6 @@ func (c *backendClient) blobsByMerkle(tlogID string, token []byte, merkles [][]b
 		return nil, err
 	}
 
-	if len(token) == tokenPrefixSize() {
-		// This is a token prefix. Get the full token from the cache.
-		var ok bool
-		token, ok = c.backend.fullLengthToken(token)
-		if !ok {
-			return nil, backend.PluginUserError{
-				PluginID:  comments.ID,
-				ErrorCode: int(comments.ErrorStatusTokenInvalid),
-			}
-		}
-	}
-
 	// Get tree ID
 	treeID, err := c.treeIDFromToken(tlogID, token)
 	if err != nil {

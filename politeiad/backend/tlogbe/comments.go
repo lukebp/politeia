@@ -123,9 +123,13 @@ func (p *commentsPlugin) mutex(token string) *sync.Mutex {
 
 // commentsIndexPath accepts full length token or token prefix but always
 // uses prefix when generating the comments index path string.
-func (p *commentsPlugin) commentsIndexPath(s comments.StateT, token string) string {
+func (p *commentsPlugin) commentsIndexPath(s comments.StateT, token string) (string, error) {
 	// Use token prefix
-	token = tokenPrefix([]byte(token))
+	t, err := hex.DecodeString(token)
+	if err != nil {
+		return "", err
+	}
+	token = tokenPrefix(t)
 	fn := filenameCommentsIndex
 	switch s {
 	case comments.StateUnvetted:
@@ -137,7 +141,7 @@ func (p *commentsPlugin) commentsIndexPath(s comments.StateT, token string) stri
 		panic(e)
 	}
 	fn = strings.Replace(fn, "{token}", token, 1)
-	return filepath.Join(p.dataDir, fn)
+	return filepath.Join(p.dataDir, fn), nil
 }
 
 // commentsIndexLocked returns the cached commentsIndex for the provided
@@ -146,7 +150,10 @@ func (p *commentsPlugin) commentsIndexPath(s comments.StateT, token string) stri
 //
 // This function must be called WITH the lock held.
 func (p *commentsPlugin) commentsIndexLocked(s comments.StateT, token []byte) (*commentsIndex, error) {
-	fp := p.commentsIndexPath(s, hex.EncodeToString(token))
+	fp, err := p.commentsIndexPath(s, hex.EncodeToString(token))
+	if err != nil {
+		return nil, err
+	}
 	b, err := ioutil.ReadFile(fp)
 	if err != nil {
 		var e *os.PathError
@@ -191,7 +198,10 @@ func (p *commentsPlugin) commentsIndexSaveLocked(s comments.StateT, token []byte
 		return err
 	}
 
-	fp := p.commentsIndexPath(s, hex.EncodeToString(token))
+	fp, err := p.commentsIndexPath(s, hex.EncodeToString(token))
+	if err != nil {
+		return err
+	}
 	err = ioutil.WriteFile(fp, b, 0664)
 	if err != nil {
 		return err
