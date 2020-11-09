@@ -125,7 +125,7 @@ func (p *commentsPlugin) mutex(token string) *sync.Mutex {
 // uses prefix when generating the comments index path string.
 func (p *commentsPlugin) commentsIndexPath(s comments.StateT, token string) (string, error) {
 	// Use token prefix
-	t, err := hex.DecodeString(token)
+	t, err := tokenDecodeAnyLength(token)
 	if err != nil {
 		return "", err
 	}

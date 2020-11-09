@@ -409,7 +409,7 @@ func (p *ticketVotePlugin) cachedVotesDel(token string) {
 // uses always the token prefix when generatig the path.
 func (p *ticketVotePlugin) cachedSummaryPath(token string) (string, error) {
 	// Use token prefix
-	t, err := hex.DecodeString(token)
+	t, err := tokenDecodeAnyLength(token)
 	if err != nil {
 		return "", err
 	}
