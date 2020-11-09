@@ -6,9 +6,6 @@ package tlogbe
 
 import (
 	"fmt"
-
-	"github.com/decred/politeia/politeiad/backend"
-	"github.com/decred/politeia/politeiad/plugins/comments"
 )
 
 // TODO verify writes only accept full length tokens
@@ -67,10 +64,7 @@ func (c *backendClient) treeIDFromToken(tlogID string, token []byte) (int64, err
 		var ok bool
 		token, ok = c.backend.fullLengthToken(token)
 		if !ok {
-			return 0, backend.PluginUserError{
-				PluginID:  comments.ID,
-				ErrorCode: int(comments.ErrorStatusTokenInvalid),
-			}
+			return 0, errRecordNotFound
 		}
 	}
 
