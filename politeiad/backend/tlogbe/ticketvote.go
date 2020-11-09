@@ -405,16 +405,27 @@ func (p *ticketVotePlugin) cachedVotesDel(token string) {
 	log.Debugf("ticketvote: deleted votes cache: %v", token)
 }
 
-func (p *ticketVotePlugin) cachedSummaryPath(token string) string {
+// cachedSummaryPath accepts both full tokens and token prefixes, however it
+// uses always the token prefix when generatig the path.
+func (p *ticketVotePlugin) cachedSummaryPath(token string) (string, error) {
+	// Use token prefix
+	t, err := hex.DecodeString(token)
+	if err != nil {
+		return "", err
+	}
+	token = tokenPrefix(t)
 	fn := strings.Replace(filenameSummary, "{token}", token, 1)
-	return filepath.Join(p.dataDir, fn)
+	return filepath.Join(p.dataDir, fn), nil
 }
 
 func (p *ticketVotePlugin) cachedSummary(token string) (*ticketvote.Summary, error) {
 	p.Lock()
 	defer p.Unlock()
 
-	fp := p.cachedSummaryPath(token)
+	fp, err := p.cachedSummaryPath(token)
+	if err != nil {
+		return nil, err
+	}
 	b, err := ioutil.ReadFile(fp)
 	if err != nil {
 		var e *os.PathError
@@ -443,7 +454,10 @@ func (p *ticketVotePlugin) cachedSummarySave(token string, s ticketvote.Summary)
 	p.Lock()
 	defer p.Unlock()
 
-	fp := p.cachedSummaryPath(token)
+	fp, err := p.cachedSummaryPath(token)
+	if err != nil {
+		return err
+	}
 	err = ioutil.WriteFile(fp, b, 0664)
 	if err != nil {
 		return err
