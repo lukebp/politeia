@@ -406,7 +406,7 @@ func (p *ticketVotePlugin) cachedVotesDel(token string) {
 }
 
 // cachedSummaryPath accepts both full tokens and token prefixes, however it
-// uses always the token prefix when generatig the path.
+// always uses the token prefix when generatig the path.
 func (p *ticketVotePlugin) cachedSummaryPath(token string) (string, error) {
 	// Use token prefix
 	t, err := tokenDecodeAnyLength(token)
