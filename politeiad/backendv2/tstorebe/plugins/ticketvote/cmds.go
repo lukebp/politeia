@@ -2184,7 +2184,7 @@ func (p *ticketVotePlugin) voteOptionResults(token []byte, options []ticketvote.
 	)
 	switch {
 	case len(ctally) > 0:
-		// Vote are in the cache. Use the cached results.
+		// Votes are in the cache. Use the cached results.
 		tally = ctally
 
 	default:
