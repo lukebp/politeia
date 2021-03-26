@@ -50,7 +50,7 @@ const (
 	defaultDBHost   = "localhost:3306" // MySQL default host
 	defaultTlogHost = "localhost:8090"
 
-	// Enviroment variables
+	// Environment variables
 	envDcrtimeCert = "DCRTIMECERT"
 	envDBPass      = "DBPASS"
 	envTlogPass    = "TLOGPASS"
