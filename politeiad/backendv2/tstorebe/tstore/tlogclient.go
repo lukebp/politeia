@@ -8,13 +8,15 @@ import (
 	"bytes"
 	"context"
 	"crypto"
+	"crypto/ed25519"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/decred/politeia/politeiad/backendv2/tstorebe/store"
 	"github.com/decred/politeia/util"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/trillian"
@@ -27,6 +29,7 @@ import (
 	"github.com/google/trillian/merkle/hashers/registry"
 	"github.com/google/trillian/merkle/rfc6962"
 	"github.com/google/trillian/types"
+	"golang.org/x/crypto/argon2"
 	rstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc"
@@ -99,7 +102,8 @@ var (
 	_ tlogClient = (*tclient)(nil)
 )
 
-// tclient implements the tlogClient interface.
+// tclient implements the tlogClient interface using the trillian provided
+// TrillianLogClient and TrillianAdminClient.
 type tclient struct {
 	host       string
 	grpc       *grpc.ClientConn
@@ -517,27 +521,123 @@ func newTrillianKey() (crypto.Signer, error) {
 	})
 }
 
-// newTClient returns a new tclient.
-func newTClient(host, keyFile string) (*tclient, error) {
-	// Setup trillian key file
-	if !util.FileExists(keyFile) {
-		// Trillian key file does not exist. Create one.
-		log.Infof("Generating trillian private key")
-		key, err := newTrillianKey()
+const (
+	// argon2ParamsKey is the kv store key for the Argon2Params
+	// structure that is saved on initial tlog key derivation.
+	argon2ParamsKey = "tlog-argon2-params"
+)
+
+// deriveTlogKey derives a ed25519 tlog private key using the provided
+// passphrase and the Aragon2id key derivation function. A random 16 byte salt
+// is created the first time the key is derived. The salt and the other argon2
+// params are saved to the kv store. Subsequent calls to this fuction will pull
+// the existing salt and params from the kv store and use them to derive the
+// key.
+func deriveTlogKey(kvstore store.BlobKV, passphrase string) (*keyspb.PrivateKey, error) {
+	// Check if argon2 params already exist in the kv store for the
+	// tlog key. Existing params means that the key has been derived
+	// previously. These params will be used if found. If no params
+	// exist then new ones will be created and saved to the kv store
+	// for future use.
+	blobs, err := kvstore.Get([]string{argon2ParamsKey})
+	if err != nil {
+		return nil, fmt.Errorf("get: %v", err)
+	}
+	var (
+		save bool
+		ap   util.Argon2Params
+	)
+	b, ok := blobs[argon2ParamsKey]
+	if ok {
+		log.Debugf("Tlog argon2 params found in kv store")
+		err = json.Unmarshal(b, &ap)
 		if err != nil {
 			return nil, err
 		}
-		b, err := der.MarshalPrivateKey(key)
-		if err != nil {
-			return nil, err
-		}
-		err = ioutil.WriteFile(keyFile, b, 0400)
-		if err != nil {
-			return nil, err
-		}
-		log.Infof("Trillian private key created: %v", keyFile)
+	} else {
+		log.Infof("Tlog argon2 params not found; creating a new ones")
+		ap = util.NewArgon2Params()
+		save = true
 	}
 
+	// Derive key
+	seed := argon2.IDKey([]byte(passphrase), ap.Salt, ap.Time, ap.Memory,
+		ap.Threads, ap.KeyLen)
+	pk := ed25519.NewKeyFromSeed(seed)
+	util.Zero(seed)
+
+	derKey, err := der.MarshalPrivateKey(pk)
+	if err != nil {
+		return nil, err
+	}
+
+	// Save params to the kv store if this is the first time the key
+	// was derived.
+	if save {
+		b, err := json.Marshal(ap)
+		if err != nil {
+			return nil, err
+		}
+		kv := map[string][]byte{
+			argon2ParamsKey: b,
+		}
+		err = kvstore.Put(kv, false)
+		if err != nil {
+			return nil, fmt.Errorf("put: %v", err)
+		}
+
+		log.Infof("Tlog argon2 params saved to kv store")
+	}
+
+	return &keyspb.PrivateKey{
+		Der: derKey,
+	}, nil
+}
+
+const (
+	// tlogDigestKey is the kv store key for the SHA256 digest of the
+	// tlog private key that is saved on initial tlog key derivation.
+	tlogDigestKey = "tlog-pk-digest"
+)
+
+// verifyTlogKey verifies that the tlog private key has not changed. It does
+// this by saving a SHA256 digest of the key to the kv store the first time
+// the key is derived. Subsequent calls to this function will check the provided
+// key digest against the saved digest. This function will error if the keys
+// do not match.
+func verifyTlogKey(kvstore store.BlobKV, pk *keyspb.PrivateKey) error {
+	blobs, err := kvstore.Get([]string{tlogDigestKey})
+	if err != nil {
+		return fmt.Errorf("get: %v", err)
+	}
+	existingDigest, ok := blobs[tlogDigestKey]
+	if ok {
+		// Key digest already exists. Verify that the provided key
+		// mataches the saved key.
+		newDigest := util.Digest(pk.GetDer())
+		if !bytes.Equal(newDigest, existingDigest) {
+			return fmt.Errorf("attempting to use different tlog key")
+		}
+
+		// Keys match!
+		return nil
+	}
+
+	// This is the first time the tlog key has been derived. Save a
+	// SHA256 digest of the key to the kv store.
+	kv := map[string][]byte{
+		tlogDigestKey: util.Digest(pk.GetDer()),
+	}
+	err = kvstore.Put(kv, false)
+	if err != nil {
+		return fmt.Errorf("put: %v", err)
+	}
+
+	return nil
+}
+
+// newTClient returns a new tclient.
+func newTClient(host string, privateKey *keyspb.PrivateKey) (*tclient, error) {
 	// Default gprc max message size is ~4MB (4194304 bytes). This is
 	// not large enough for trees with tens of thousands of leaves.
 	// Increase it to 20MB.
@@ -549,12 +649,7 @@ func newTClient(host, keyFile string) (*tclient, error) {
 		return nil, fmt.Errorf("grpc dial: %v", err)
 	}
 
-	// Load trillian key pair
-	var privateKey = &keyspb.PrivateKey{}
-	privateKey.Der, err = ioutil.ReadFile(keyFile)
-	if err != nil {
-		return nil, err
-	}
+	// Setup signing key
 	signer, err := der.UnmarshalPrivateKey(privateKey.Der)
 	if err != nil {
 		return nil, err

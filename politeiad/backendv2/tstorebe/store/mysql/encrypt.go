@@ -18,33 +18,10 @@ import (
 )
 
 const (
-	// argon2idKey is the kv store key for the argon2idParams structure
-	// that is saved on initial key derivation.
-	argon2idKey = "argon2id"
+	// argon2ParamsKey is the kv store key for the Argon2Params
+	// structure that is saved on initial key derivation.
+	argon2ParamsKey = "mysql-argon2-params"
 )
-
-// argon2idParams is saved to the kv store the first time the key is derived.
-type argon2idParams struct {
-	Time    uint32 `json:"time"`
-	Memory  uint32 `json:"memory"`
-	Threads uint8  `json:"threads"`
-	KeyLen  uint32 `json:"keylen"`
-	Salt    []byte `json:"salt"`
-}
-
-func newArgon2Params() argon2idParams {
-	salt, err := util.Random(16)
-	if err != nil {
-		panic(err)
-	}
-	return argon2idParams{
-		Time:    1,
-		Memory:  64 * 1024, // In KiB
-		Threads: 4,
-		KeyLen:  32,
-		Salt:    salt,
-	}
-}
 
 // argon2idKey derives a 32 byte key from the provided password using the
 // Aragon2id key derivation function. A random 16 byte salt is created the
@@ -64,7 +41,7 @@ func (s *mysql) argon2idKey(password string) error {
 		// Testing mode
 		blobs = make(map[string][]byte)
 	} else {
-		blobs, err = s.Get([]string{argon2idKey})
+		blobs, err = s.Get([]string{argon2ParamsKey})
 		if err != nil {
 			return fmt.Errorf("get: %v", err)
 		}
@@ -72,9 +49,9 @@ func (s *mysql) argon2idKey(password string) error {
 
 	var (
 		save bool
-		ap   argon2idParams
+		ap   util.Argon2Params
 	)
-	b, ok := blobs[argon2idKey]
+	b, ok := blobs[argon2ParamsKey]
 	if ok {
 		log.Debugf("Encryption key salt already exists")
 		err = json.Unmarshal(b, &ap)
@@ -83,7 +60,7 @@ func (s *mysql) argon2idKey(password string) error {
 		}
 	} else {
 		log.Infof("Encryption key not found; creating a new one")
-		ap = newArgon2Params()
+		ap = util.NewArgon2Params()
 		save = true
 	}
 
@@ -101,7 +78,7 @@ func (s *mysql) argon2idKey(password string) error {
 			return err
 		}
 		kv := map[string][]byte{
-			argon2idKey: b,
+			argon2ParamsKey: b,
 		}
 		err = s.Put(kv, false)
 		if err != nil {
