@@ -527,7 +527,7 @@ func newTrillianKey() (crypto.Signer, error) {
 // restarted, will use the existing params to derive the key and will use the
 // digest to verify that the tlog key has not changed.
 type tlogKeyParams struct {
-	Digest []byte            `json:"digest"`
+	Digest []byte            `json:"digest"` // SHA256 digest
 	Params util.Argon2Params `json:"params"`
 }
 
@@ -544,8 +544,10 @@ const (
 // params are saved to the kv store. Subsequent calls to this fuction will pull
 // the existing salt and params from the kv store and use them to derive the
 // key, then will use the saved private key digest to verify that the key has
-// not changed between politeiad restarts.
+// not changed.
 func deriveTlogKey(kvstore store.BlobKV, passphrase string) (*keyspb.PrivateKey, error) {
+	log.Infof("Deriving tlog signing key")
+
 	// Check if argon2 params already exist in the kv store for the
 	// tlog key. Existing params means that the key has been derived
 	// previously. These params will be used if found. If no params
@@ -608,7 +610,7 @@ func deriveTlogKey(kvstore store.BlobKV, passphrase string) (*keyspb.PrivateKey,
 		// This was not the first time the key was derived. Verify that
 		// the key has not changed.
 		if !bytes.Equal(tkp.Digest, keyDigest) {
-			return nil, fmt.Errorf("attempting to use different tlog key")
+			return nil, fmt.Errorf("attempting to use different tlog signing key")
 		}
 	}
 
