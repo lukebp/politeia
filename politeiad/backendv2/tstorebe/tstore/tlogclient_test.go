@@ -40,13 +40,15 @@ func TestDeriveTlogKey(t *testing.T) {
 	}
 
 	// Subsequent calls should use the existing derivation params and
-	// return the same key.
+	// return the same key. This function will error if the derived
+	// keys are not the same.
 	key2, err := deriveTlogKey(kvstore, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// Sanity check
 	if key1.String() != key2.String() {
-		t.Errorf("different key being derived on second derivation")
+		t.Fatalf("different key was returned without any errors")
 	}
 }

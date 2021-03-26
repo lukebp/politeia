@@ -130,10 +130,6 @@ func New(appDir, dataDir string, anp *chaincfg.Params, tlogHost, tlogPass, dbTyp
 	if err != nil {
 		return nil, err
 	}
-	err = verifyTlogKey(kvstore, tlogKey)
-	if err != nil {
-		return nil, err
-	}
 	tlogClient, err := newTClient(tlogHost, tlogKey)
 	if err != nil {
 		return nil, err

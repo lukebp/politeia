@@ -521,10 +521,21 @@ func newTrillianKey() (crypto.Signer, error) {
 	})
 }
 
+// tlogKeyParams is saved to the kv store on initial derivation of the tlog
+// private key. It contains the params that were used to derive the key and a
+// SHA256 digest of the key. Subsequent derivations, i.e. anytime politeiad is
+// restarted, will use the existing params to derive the key and will use the
+// digest to verify that the tlog key has not changed.
+type tlogKeyParams struct {
+	Digest []byte            `json:"digest"`
+	Params util.Argon2Params `json:"params"`
+}
+
 const (
-	// argon2ParamsKey is the kv store key for the Argon2Params
-	// structure that is saved on initial tlog key derivation.
-	argon2ParamsKey = "tlog-argon2-params"
+	// tlogKeyParamsKey is the kv store key for the tlogKeyParams
+	// structure that is saved to the kv store on initial tlog key
+	// derivation.
+	tlogKeyParamsKey = "tlogkeyparams"
 )
 
 // deriveTlogKey derives a ed25519 tlog private key using the provided
@@ -532,37 +543,41 @@ const (
 // is created the first time the key is derived. The salt and the other argon2
 // params are saved to the kv store. Subsequent calls to this fuction will pull
 // the existing salt and params from the kv store and use them to derive the
-// key.
+// key, then will use the saved private key digest to verify that the key has
+// not changed between politeiad restarts.
 func deriveTlogKey(kvstore store.BlobKV, passphrase string) (*keyspb.PrivateKey, error) {
 	// Check if argon2 params already exist in the kv store for the
 	// tlog key. Existing params means that the key has been derived
 	// previously. These params will be used if found. If no params
 	// exist then new ones will be created and saved to the kv store
 	// for future use.
-	blobs, err := kvstore.Get([]string{argon2ParamsKey})
+	blobs, err := kvstore.Get([]string{tlogKeyParamsKey})
 	if err != nil {
 		return nil, fmt.Errorf("get: %v", err)
 	}
 	var (
 		save bool
-		ap   util.Argon2Params
+		tkp  tlogKeyParams
 	)
-	b, ok := blobs[argon2ParamsKey]
+	b, ok := blobs[tlogKeyParamsKey]
 	if ok {
-		log.Debugf("Tlog argon2 params found in kv store")
-		err = json.Unmarshal(b, &ap)
+		log.Debugf("Tlog private key params found in kv store")
+		err = json.Unmarshal(b, &tkp)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		log.Infof("Tlog argon2 params not found; creating a new ones")
-		ap = util.NewArgon2Params()
+		log.Infof("Tlog private key params not found; creating new ones")
+		tkp = tlogKeyParams{
+			Params: util.NewArgon2Params(),
+		}
 		save = true
 	}
 
 	// Derive key
-	seed := argon2.IDKey([]byte(passphrase), ap.Salt, ap.Time, ap.Memory,
-		ap.Threads, ap.KeyLen)
+	seed := argon2.IDKey([]byte(passphrase), tkp.Params.Salt,
+		tkp.Params.Time, tkp.Params.Memory, tkp.Params.Threads,
+		tkp.Params.KeyLen)
 	pk := ed25519.NewKeyFromSeed(seed)
 	util.Zero(seed)
 
@@ -571,69 +586,35 @@ func deriveTlogKey(kvstore store.BlobKV, passphrase string) (*keyspb.PrivateKey,
 		return nil, err
 	}
 
-	// Save params to the kv store if this is the first time the key
-	// was derived.
+	keyDigest := util.Digest(derKey)
 	if save {
-		b, err := json.Marshal(ap)
+		// This was the first time the key was derived. Save the params
+		// to the kv store.
+		tkp.Digest = keyDigest
+		b, err := json.Marshal(tkp)
 		if err != nil {
 			return nil, err
 		}
 		kv := map[string][]byte{
-			argon2ParamsKey: b,
+			tlogKeyParamsKey: b,
 		}
 		err = kvstore.Put(kv, false)
 		if err != nil {
 			return nil, fmt.Errorf("put: %v", err)
 		}
 
-		log.Infof("Tlog argon2 params saved to kv store")
+		log.Infof("Tlog private key params saved to kv store")
+	} else {
+		// This was not the first time the key was derived. Verify that
+		// the key has not changed.
+		if !bytes.Equal(tkp.Digest, keyDigest) {
+			return nil, fmt.Errorf("attempting to use different tlog key")
+		}
 	}
 
 	return &keyspb.PrivateKey{
 		Der: derKey,
 	}, nil
-}
-
-const (
-	// tlogDigestKey is the kv store key for the SHA256 digest of the
-	// tlog private key that is saved on initial tlog key derivation.
-	tlogDigestKey = "tlog-pk-digest"
-)
-
-// verifyTlogKey verifies that the tlog private key has not changed. It does
-// this by saving a SHA256 digest of the key to the kv store the first time
-// the key is derived. Subsequent calls to this function will check the provided
-// key digest against the saved digest. This function will error if the keys
-// do not match.
-func verifyTlogKey(kvstore store.BlobKV, pk *keyspb.PrivateKey) error {
-	blobs, err := kvstore.Get([]string{tlogDigestKey})
-	if err != nil {
-		return fmt.Errorf("get: %v", err)
-	}
-	existingDigest, ok := blobs[tlogDigestKey]
-	if ok {
-		// Key digest already exists. Verify that the provided key
-		// mataches the saved key.
-		newDigest := util.Digest(pk.GetDer())
-		if !bytes.Equal(newDigest, existingDigest) {
-			return fmt.Errorf("attempting to use different tlog key")
-		}
-
-		// Keys match!
-		return nil
-	}
-
-	// This is the first time the tlog key has been derived. Save a
-	// SHA256 digest of the key to the kv store.
-	kv := map[string][]byte{
-		tlogDigestKey: util.Digest(pk.GetDer()),
-	}
-	err = kvstore.Put(kv, false)
-	if err != nil {
-		return fmt.Errorf("put: %v", err)
-	}
-
-	return nil
 }
 
 // newTClient returns a new tclient.
