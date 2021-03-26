@@ -538,7 +538,7 @@ const (
 	tlogKeyParamsKey = "tlogkeyparams"
 )
 
-// deriveTlogKey derives a ed25519 tlog private key using the provided
+// deriveTlogKey derives a ed25519 tlog private signing key using the provided
 // passphrase and the Aragon2id key derivation function. A random 16 byte salt
 // is created the first time the key is derived. The salt and the other argon2
 // params are saved to the kv store. Subsequent calls to this fuction will pull
