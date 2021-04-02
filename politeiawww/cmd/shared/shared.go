@@ -5,16 +5,12 @@
 package shared
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 
-	"github.com/decred/politeia/politeiad/api/v1/identity"
-	"github.com/decred/politeia/util"
-	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -59,31 +55,12 @@ func PrintJSON(body interface{}) error {
 	return nil
 }
 
-// DigestSHA3 returns the hex encoded SHA3-256 of a string.
+// DigestSHA3 returns the hex encoded SHA3-256 of a string. SHA3-256 was chosen
+// to hash passwords in order to match the politeiagui behavior.
 func DigestSHA3(s string) string {
 	h := sha3.New256()
 	h.Write([]byte(s))
 	return hex.EncodeToString(h.Sum(nil))
-}
-
-// NewIdentity generates a new FullIdentity using randomly generated data to
-// create the public/private key pair.
-func NewIdentity() (*identity.FullIdentity, error) {
-	b, err := util.Random(32)
-	if err != nil {
-		return nil, err
-	}
-
-	r := bytes.NewReader(b)
-	pub, priv, err := ed25519.GenerateKey(r)
-	if err != nil {
-		return nil, err
-	}
-
-	id := &identity.FullIdentity{}
-	copy(id.Public.Key[:], pub[:])
-	copy(id.PrivateKey[:], priv[:])
-	return id, nil
 }
 
 // SetConfig sets the global config variable.

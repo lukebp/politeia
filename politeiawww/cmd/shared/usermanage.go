@@ -93,6 +93,6 @@ Valid actions are:
 2. expireupdatekey         Expires update user key verification
 3. expireresetpassword     Expires reset password verification
 4. clearpaywall            Clears user registration paywall
-5. unlocks                 Unlocks user account from failed logins
-6. deactivates             Deactivates user account
+5. unlock                  Unlocks user account from failed logins
+6. deactivate              Deactivates user account
 7. reactivate              Reactivates user account`

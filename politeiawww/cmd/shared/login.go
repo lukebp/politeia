@@ -28,6 +28,14 @@ func (cmd *LoginCmd) Execute(args []string) error {
 		return err
 	}
 
+	// NOTE: Keep in mind that certain special characters in your
+	// password can lead to unexpected behavior when your shell
+	// parses them.
+	//
+	// For example, if your password is "password$123" the actual
+	// password that is provided to this command will be "password23"
+	// depending on your shell.
+
 	// Setup login request
 	l := &v1.Login{
 		Email:    cmd.Args.Email,

@@ -5,10 +5,8 @@
 package shared
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -30,10 +28,6 @@ const (
 	defaultWalletHost        = "127.0.0.1"
 	defaultWalletTestnetPort = "19111"
 
-	userFile       = "user.txt"
-	csrfFile       = "csrf.txt"
-	cookieFile     = "cookies.json"
-	identityFile   = "identity.json"
 	clientCertFile = "client.pem"
 	clientKeyFile  = "client-key.pem"
 )
@@ -65,8 +59,8 @@ type Config struct {
 	FaucetHost string // Testnet faucet host
 	CSRF       string // CSRF header token
 
-	Identity *identity.FullIdentity // User identity
-	Cookies  []*http.Cookie         // User cookies
+	Identity *identity.FullIdentity // User identity of logged in user
+	Cookies  []*http.Cookie         // Cookies for logged in user
 }
 
 // LoadConfig initializes and parses the config using a config file and command
@@ -178,11 +172,7 @@ func LoadConfig(homeDir, dataDirname, configFilename string) (*Config, error) {
 	cfg.CSRF = csrf
 
 	// Load identity for the logged in user
-	username, err := cfg.loadLoggedInUsername()
-	if err != nil {
-		return nil, fmt.Errorf("load username: %v", err)
-	}
-	id, err := cfg.LoadIdentity(username)
+	id, err := cfg.LoadIdentity()
 	if err != nil {
 		return nil, fmt.Errorf("load identity: %v", err)
 	}
@@ -199,205 +189,4 @@ func LoadConfig(homeDir, dataDirname, configFilename string) (*Config, error) {
 	}
 
 	return &cfg, nil
-}
-
-// hostFilePath returns the host specific file path for the passed in file.
-// This means that the hostname is prepended to the filename. cli data is
-// segmented by host so that we can interact with multiple hosts
-// simultaneously.
-func (cfg *Config) hostFilePath(filename string) (string, error) {
-	u, err := url.Parse(cfg.Host)
-	if err != nil {
-		return "", fmt.Errorf("parse host: %v", err)
-	}
-
-	f := fmt.Sprintf("%v_%v", u.Hostname(), filename)
-	return filepath.Join(cfg.DataDir, f), nil
-}
-
-func (cfg *Config) loadCookies() ([]*http.Cookie, error) {
-	f, err := cfg.hostFilePath(cookieFile)
-	if err != nil {
-		return nil, fmt.Errorf("hostFilePath: %v", err)
-	}
-
-	if !fileExists(f) {
-		// Nothing to load
-		return nil, nil
-	}
-
-	b, err := ioutil.ReadFile(f)
-	if err != nil {
-		return nil, fmt.Errorf("read file %v: %v", f, err)
-	}
-
-	var c []*http.Cookie
-	err = json.Unmarshal(b, &c)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal cookies: %v", err)
-	}
-
-	return c, nil
-}
-
-// SaveCookies writes the passed in cookies to the host specific cookie file.
-func (cfg *Config) SaveCookies(cookies []*http.Cookie) error {
-	b, err := json.Marshal(cookies)
-	if err != nil {
-		return fmt.Errorf("marshal cookies: %v", err)
-	}
-
-	f, err := cfg.hostFilePath(cookieFile)
-	if err != nil {
-		return fmt.Errorf("hostFilePath: %v", err)
-	}
-
-	err = ioutil.WriteFile(f, b, 0600)
-	if err != nil {
-		return fmt.Errorf("write file %v: %v", f, err)
-	}
-
-	cfg.Cookies = cookies
-	return nil
-}
-
-func (cfg *Config) loadCSRF() (string, error) {
-	f, err := cfg.hostFilePath(csrfFile)
-	if err != nil {
-		return "", fmt.Errorf("hostFilePath: %v", err)
-	}
-
-	if !fileExists(f) {
-		// Nothing to load
-		return "", nil
-	}
-
-	b, err := ioutil.ReadFile(f)
-	if err != nil {
-		return "", fmt.Errorf("read file %v: %v", f, err)
-	}
-
-	return string(b), nil
-}
-
-// SaveCSRF writes the passed in CSRF token to the host specific CSRF file.
-func (cfg *Config) SaveCSRF(csrf string) error {
-	f, err := cfg.hostFilePath(csrfFile)
-	if err != nil {
-		return fmt.Errorf("hostFilePath: %v", err)
-	}
-
-	err = ioutil.WriteFile(f, []byte(csrf), 0600)
-	if err != nil {
-		return fmt.Errorf("write file %v: %v", f, err)
-	}
-
-	cfg.CSRF = csrf
-	return nil
-}
-
-// identityFilePath returns the file path for a specific user identity.  We
-// store identities in a user specific file so that we can keep track of the
-// identities of multiple users.
-func (cfg *Config) identityFilePath(username string) (string, error) {
-	return cfg.hostFilePath(fmt.Sprintf("%v_%v", username, identityFile))
-}
-
-func (cfg *Config) LoadIdentity(username string) (*identity.FullIdentity, error) {
-	if username == "" {
-		// No logged in user
-		return nil, nil
-	}
-
-	f, err := cfg.identityFilePath(username)
-	if err != nil {
-		return nil, fmt.Errorf("identityFilePath: %v", err)
-	}
-
-	if !fileExists(f) {
-		// User identity doesn't exist
-		return nil, nil
-	}
-
-	id, err := identity.LoadFullIdentity(f)
-	if err != nil {
-		return nil, fmt.Errorf("load identity %v: %v", f, err)
-	}
-
-	return id, nil
-}
-
-// SaveIdentity writes the passed in user identity to disk so that it can be
-// persisted between commands.  The prepend the hostname and the username onto
-// the idenity filename so that we can keep track of the identities for
-// multiple users per host.
-func (cfg *Config) SaveIdentity(user string, id *identity.FullIdentity) error {
-	f, err := cfg.identityFilePath(user)
-	if err != nil {
-		return fmt.Errorf("identityFilePath: %v", err)
-	}
-
-	err = id.Save(f)
-	if err != nil {
-		return fmt.Errorf("save idenity to %v: %v", f, err)
-	}
-
-	cfg.Identity = id
-	return nil
-}
-
-func (cfg *Config) loadLoggedInUsername() (string, error) {
-	f, err := cfg.hostFilePath(userFile)
-	if err != nil {
-		return "", fmt.Errorf("hostFilePath: %v", err)
-	}
-
-	if !fileExists(f) {
-		// Nothing to load
-		return "", nil
-	}
-
-	b, err := ioutil.ReadFile(f)
-	if err != nil {
-		return "", fmt.Errorf("read file %v: %v", f, err)
-	}
-
-	return string(b), nil
-}
-
-// SaveLoggedInUsername saved the passed in username to the on-disk user file.
-// We persist the logged in username between commands so that we know which
-// identity to load.
-func (cfg *Config) SaveLoggedInUsername(username string) error {
-	f, err := cfg.hostFilePath(userFile)
-	if err != nil {
-		return fmt.Errorf("hostFilePath: %v", err)
-	}
-
-	err = ioutil.WriteFile(f, []byte(username), 0600)
-	if err != nil {
-		return fmt.Errorf("write file %v: %v", f, err)
-	}
-
-	// The config identity is the identity of the logged in
-	// user so we need to update the identity when the logged
-	// in user changes.
-	id, err := cfg.LoadIdentity(username)
-	if err != nil {
-		return fmt.Errorf("load identity: %v", err)
-	}
-	cfg.Identity = id
-
-	return nil
-}
-
-// filesExists reports whether the named file or directory exists.
-func fileExists(name string) bool {
-	if _, err := os.Stat(name); err != nil {
-		if os.IsNotExist(err) {
-			return false
-		}
-	}
-
-	return true
 }
