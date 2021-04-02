@@ -31,14 +31,39 @@ const (
 type ErrorCodeT uint32
 
 const (
-	ErrorCodeInvalid                 ErrorCodeT = 0
-	ErrorCodeRequestPayloadInvalid   ErrorCodeT = 1
-	ErrorCodeChallengeInvalid        ErrorCodeT = 2
-	ErrorCodeMetadataStreamInvalid   ErrorCodeT = 3
+	// ErrorCodeInvalid is an invalid error code.
+	ErrorCodeInvalid ErrorCodeT = 0
+
+	// ErrorCodeRequestPayloadInvalid is returned when a request body
+	// contains an invalid payload.
+	ErrorCodeRequestPayloadInvalid ErrorCodeT = 1
+
+	// ErrorCodeChallengeInvalid is returned when a request contains
+	// an invalid challenge.
+	ErrorCodeChallengeInvalid ErrorCodeT = 2
+
+	// ErrorCodeMetadataStreamInvalid is returned when a record
+	// contains an invalid metadata stream on submission.
+	ErrorCodeMetadataStreamInvalid ErrorCodeT = 3
+
+	// ErrorCodeMetadataStreamDuplicate is returned when a record
+	// contains a duplicate metadata stream on submission.
 	ErrorCodeMetadataStreamDuplicate ErrorCodeT = 4
-	ErrorCodeFilesEmpty              ErrorCodeT = 5
-	ErrorCodeFileNameInvalid         ErrorCodeT = 6
-	ErrorCodeFileNameDuplicate       ErrorCodeT = 7
+
+	// ErrorCodeFilesEmpty is returned when a record is submitted
+	// without any record files.
+	ErrorCodeFilesEmpty ErrorCodeT = 5
+
+	// ErrorCodeFileNameInvalid is returned when a record files has an
+	// invalid name.
+	ErrorCodeFileNameInvalid ErrorCodeT = 6
+
+	// ErrorCodeFileNameDuplicate is returned when a record is
+	// submitted with files that have the same name.
+	ErrorCodeFileNameDuplicate ErrorCodeT = 7
+
+	// ErrorCodeFileDigestInvalid is returned when the specified record
+	// file digest does not match the calculated file payload digest.
 	ErrorCodeFileDigestInvalid       ErrorCodeT = 8
 	ErrorCodeFilePayloadInvalid      ErrorCodeT = 9
 	ErrorCodeFileMIMETypeInvalid     ErrorCodeT = 10
