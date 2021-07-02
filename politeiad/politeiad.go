@@ -17,6 +17,8 @@ import (
 	"strings"
 	"syscall"
 
+	_ "net/http/pprof"
+
 	"github.com/decred/dcrd/chaincfg/v3"
 	v1 "github.com/decred/politeia/politeiad/api/v1"
 	"github.com/decred/politeia/politeiad/api/v1/identity"
@@ -420,6 +422,12 @@ func _main() error {
 				cfg.HTTPSCert, cfg.HTTPSKey, p.router)
 		}()
 	}
+
+	// Setup listener for profiling
+	go func() {
+		http.ListenAndServeTLS("localhost:6060",
+			cfg.HTTPSCert, cfg.HTTPSKey, nil)
+	}()
 
 	// Tell user we are ready to go.
 	log.Infof("Start of day")
